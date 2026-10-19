@@ -153,8 +153,8 @@ struct MeetingCard: View {
                 if store.isDemo { Text("DEMO").font(.system(size: 8, weight: .semibold)).foregroundStyle(.secondary).padding(4).background(.white.opacity(0.08), in: Capsule()) }
                 Spacer()
                 Button(action: openSettings) { Image(systemName: "ellipsis").frame(width: 22, height: 20) }
-                    .buttonStyle(.plain).foregroundStyle(.secondary).help("Calendar settings")
-                    .accessibilityLabel("Calendar settings")
+                    .buttonStyle(.plain).foregroundStyle(.secondary).help("Settings")
+                    .accessibilityLabel("Settings")
             }
             if let meeting {
                 let current = meeting.isCurrent(at: now)

@@ -65,7 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = BrandIcon.menuImage
         let menu = NSMenu()
-        for (title, action) in [("Calendar settings…", #selector(showSettings)), ("Preview next meeting", #selector(demo)), ("Preview current meeting", #selector(demoCurrent)), ("Back to my calendar", #selector(endDemo)), ("Quit Notchpop", #selector(quit))] {
+        for (title, action) in [("Settings…", #selector(showSettings)), ("Preview next meeting", #selector(demo)), ("Preview current meeting", #selector(demoCurrent)), ("Back to my calendar", #selector(endDemo)), ("Quit Notchpop", #selector(quit))] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
             item.target = self
             menu.addItem(item)
@@ -237,6 +237,8 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Your day. At a glance.").font(.system(size: 23, weight: .semibold))
             Text("Your current meeting comes first. Otherwise, Notchpop finds the next event in the coming 7 days.").foregroundStyle(.secondary)
+            LoginSettings()
+            Divider()
             if store.connected {
                 Text("Show events from").font(.headline)
                 ScrollView {

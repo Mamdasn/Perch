@@ -31,7 +31,7 @@ bash build-app.sh
 
 The script builds and signs the app, quits any running Notchpop, installs it in `/Applications`, and launches it. Run `bash build-app.sh` again after changing the code. Installation requires write access to `/Applications`.
 
-Open **Calendar settings** from the menu-bar icon, click **Connect Calendar**, and grant access. Then hover over the notch. Notchpop reads events locally; it never edits or uploads them.
+Open **Settings** from the menu-bar icon, click **Connect Calendar**, and grant access. Then hover over the notch. Notchpop reads events locally; it never edits or uploads them.
 
 The build is locally signed, not notarized. Calendar event deep links and multi-display/full-screen behavior may vary across macOS versions.
 
@@ -42,6 +42,10 @@ SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" bash build-app.sh
 ```
 
 Switching signing identities may require granting access once more. See [Apple's code-signing requirements](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements).
+
+## After restarting your Mac
+
+Enable **Launch at login** in Notchpop's menu-bar **Settings** to open it automatically when you sign in. If approval is required, click **Open Login Items Settings**. You do not need to reinstall or rebuild after restarting. Turn the toggle off to disable automatic launch. To uninstall, disable it, quit Notchpop, and move `/Applications/Notchpop.app` to Trash.
 
 ## Checks
 

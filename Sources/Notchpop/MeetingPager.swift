@@ -36,9 +36,9 @@ struct MeetingPager: View {
                     Text("\(index + 1) of \(events.count)").monospacedDigit()
                     Spacer()
                     Button { move(-1) } label: { Image(systemName: "chevron.down").frame(width: 24, height: 20) }
-                        .disabled(index == 0).help("Previous event · scroll down").accessibilityLabel("Previous event")
+                        .disabled(index == 0).help("Previous event · scroll down or ↓").accessibilityLabel("Previous event")
                     Button { move(1) } label: { Image(systemName: "chevron.up").frame(width: 24, height: 20) }
-                        .disabled(index == events.count - 1).help("Next event · scroll up").accessibilityLabel("Next event")
+                        .disabled(index == events.count - 1).help("Next event · scroll up or ↑").accessibilityLabel("Next event")
                 }.buttonStyle(.plain).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
             }
         }.background(ScrollCapture(onStep: move))
@@ -52,7 +52,7 @@ struct MeetingPager: View {
     }
 }
 
-// Observe only this card's scroll events without obstructing buttons.
+// Observe this card's scrolling and arrow keys without obstructing buttons.
 struct ScrollCapture: NSViewRepresentable {
     var onStep: (Int) -> Void
     func makeNSView(context: Context) -> CaptureView { CaptureView() }
@@ -68,8 +68,16 @@ struct ScrollCapture: NSViewRepresentable {
         override func viewDidMoveToWindow() {
             stop()
             guard window != nil else { return }
-            monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
-                guard let self, event.window === self.window,
+            monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .keyDown]) { [weak self] event in
+                guard let self, event.window === self.window else { return event }
+                if event.type == .keyDown {
+                    guard self.window?.isKeyWindow == true,
+                          event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty,
+                          event.keyCode == 126 || event.keyCode == 125 else { return event }
+                    self.onStep(event.keyCode == 126 ? 1 : -1)
+                    return nil
+                }
+                guard
                       self.bounds.contains(self.convert(event.locationInWindow, from: nil)) else { return event }
                 guard event.momentumPhase.isEmpty else { return nil }
                 if event.phase.contains(.began) || event.timestamp - self.lastTime > 0.2 {

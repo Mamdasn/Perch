@@ -35,7 +35,7 @@ final class NotchState: ObservableObject {
 }
 
 final class OverlayPanel: NSPanel {
-    override var canBecomeKey: Bool { false }
+    override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 }
 
@@ -99,7 +99,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Only the visible card receives clicks; the menu bar and transparent margins pass through.
         let cardRect = NSRect(x: notchRect.midX - 180, y: notchRect.minY - 292, width: 360, height: 292)
         let inside = cardRect.contains(mouse)
+        let wasOpen = state.mood == .open
         state.tick(now: Date(), near: near, inside: inside)
+        if state.mood == .open && !wasOpen {
+            panel.makeKey()
+        } else if state.mood != .open && wasOpen && panel.isKeyWindow {
+            panel.resignKey()
+        }
         panel.ignoresMouseEvents = !(inside && state.mood == .open)
     }
 

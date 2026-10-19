@@ -97,7 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let mouse = NSEvent.mouseLocation
         let near = notchRect.insetBy(dx: -8, dy: -8).contains(mouse)
         // Only the visible card receives clicks; the menu bar and transparent margins pass through.
-        let cardRect = NSRect(x: notchRect.midX - 180, y: notchRect.minY - 282, width: 360, height: 282)
+        let cardRect = NSRect(x: notchRect.midX - 180, y: notchRect.minY - 292, width: 360, height: 292)
         let inside = cardRect.contains(mouse)
         state.tick(now: Date(), near: near, inside: inside)
         panel.ignoresMouseEvents = !(inside && state.mood == .open)
@@ -128,21 +128,22 @@ struct NotchView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var contrast
-    @Namespace private var highlight
-    private let edgeColor = Color(red: 0.42, green: 0.76, blue: 0.82)
+    @State private var liquidProgress: CGFloat = 0
+    @State private var milkProgress: CGFloat = 0
+    private let edgeColor = Color(red: 0.83, green: 0.94, blue: 0.96)
 
     private func highlightEdge(radius: CGFloat, intensity: Double) -> some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
-            .strokeBorder(edgeColor.opacity(contrast == .increased ? 0.8 : intensity), lineWidth: contrast == .increased ? 1.5 : 1)
+            .strokeBorder(edgeColor.opacity(intensity), lineWidth: 1)
             .shadow(color: edgeColor.opacity(reduceTransparency ? 0 : intensity * 0.22), radius: 3)
-            .matchedGeometryEffect(id: "hover-edge", in: highlight)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            Color.clear.frame(height: state.topInset + 8)
+            Color.clear.frame(height: state.topInset + 18)
+            ZStack(alignment: .top) {
             if state.mood == .open {
                 TimelineView(.periodic(from: .now, by: 1)) { timeline in
                     MeetingPager(store: meetings, now: timeline.date, openSettings: openSettings)
@@ -158,21 +159,47 @@ struct NotchView: View {
                 }
                 .overlay {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .strokeBorder(.white.opacity(contrast == .increased ? 0.6 : 0.12), lineWidth: 1)
+                        .strokeBorder(.white.opacity(contrast == .increased ? 0.18 : 0.035), lineWidth: 1)
                 }
-                .overlay { highlightEdge(radius: 22, intensity: 0.28) }
+                .overlay { MilkRim(progress: reduceMotion ? 1 : milkProgress, reveal: reduceMotion ? 1 : liquidProgress, reducedTransparency: reduceTransparency) }
                 .shadow(color: .black.opacity(0.28), radius: 18, y: 10)
-                .transition(reduceMotion ? .opacity : .offset(y: -10).combined(with: .scale(scale: 0.96, anchor: .top)).combined(with: .opacity))
-            } else if state.mood == .peek {
-                highlightEdge(radius: 10, intensity: 0.18 + Double(state.hoverProgress) * 0.32)
-                    .frame(width: state.notchWidth + 4, height: state.topInset + 2)
-                    .offset(y: -state.topInset - 8)
+                .offset(y: reduceMotion ? 0 : -292 * (1 - liquidProgress))
+                .transition(reduceMotion ? .opacity : .asymmetric(insertion: .identity, removal: .offset(y: -292)))
             }
+            }
+            .frame(width: 460, height: 300, alignment: .top)
+            .clipped()
             Spacer(minLength: 0)
         }
         .frame(width: 460, height: 340, alignment: .top)
+        .overlay(alignment: .top) {
+            if state.mood == .peek {
+                highlightEdge(radius: 10, intensity: 0.025 + Double(state.hoverProgress) * 0.055)
+                    .frame(width: state.notchWidth + 4, height: state.topInset + 2)
+            } else if state.mood == .open && !reduceMotion {
+                LiquidBridge(progress: milkProgress, reveal: liquidProgress, inset: state.topInset)
+                    .fill(edgeColor.opacity(0.09))
+                    .blur(radius: reduceTransparency ? 0 : 0.7)
+                    .opacity(max(0, 1 - milkProgress * 1.8))
+                    .allowsHitTesting(false).accessibilityHidden(true)
+            }
+        }
         .environment(\.colorScheme, .dark)
-        .animation(reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.32, dampingFraction: 0.88), value: state.mood)
+        .animation(.easeInOut(duration: reduceMotion ? 0.12 : 0.32), value: state.mood)
+        .task(id: state.mood) {
+            if state.mood == .open {
+                withAnimation(reduceMotion ? nil : .timingCurve(0.22, 0.55, 0.25, 1, duration: 0.32)) {
+                    liquidProgress = 1
+                }
+                withAnimation(reduceMotion ? nil : .linear(duration: 0.48)) {
+                    milkProgress = 1
+                }
+            } else if state.mood == .peek {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) { liquidProgress = 0; milkProgress = 0 }
+            }
+        }
     }
 }
 

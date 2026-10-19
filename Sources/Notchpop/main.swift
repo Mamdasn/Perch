@@ -6,17 +6,27 @@ enum Mood { case hidden, peek, open }
 final class NotchState: ObservableObject {
     @Published var mood: Mood = .hidden
     @Published var topInset: CGFloat = 32
+    @Published var notchWidth: CGFloat = 190
+    @Published var hoverProgress: CGFloat = 0
     var enteredAt: Date?
     var leftAt: Date?
+
+    static func dwellProgress(elapsed: TimeInterval) -> CGFloat {
+        CGFloat(min(1, max(0, elapsed / 0.35)))
+    }
 
     func tick(now: Date, near: Bool, inside: Bool) {
         if near || (inside && mood == .open) {
             leftAt = nil
             if enteredAt == nil { enteredAt = now }
+            let progress = Self.dwellProgress(elapsed: now.timeIntervalSince(enteredAt!))
+            if hoverProgress != progress { hoverProgress = progress }
             let next: Mood = now.timeIntervalSince(enteredAt!) >= 0.35 ? .open : .peek
             if mood != next { mood = next }
         } else {
             enteredAt = nil
+            if hoverProgress != 0 { hoverProgress = 0 }
+            if mood == .peek { mood = .hidden }
             if leftAt == nil { leftAt = now }
             if now.timeIntervalSince(leftAt!) >= 0.25 && mood != .hidden { mood = .hidden }
         }
@@ -79,6 +89,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             notchRect = NSRect(x: screen.frame.midX - 95, y: top - 28, width: 190, height: 28)
         }
         state.topInset = notchRect.height
+        state.notchWidth = notchRect.width
         panel.setFrame(NSRect(x: notchRect.midX - 230, y: top - 340, width: 460, height: 340), display: true)
     }
 
@@ -117,6 +128,17 @@ struct NotchView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var contrast
+    @Namespace private var highlight
+    private let edgeColor = Color(red: 0.42, green: 0.76, blue: 0.82)
+
+    private func highlightEdge(radius: CGFloat, intensity: Double) -> some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .strokeBorder(edgeColor.opacity(contrast == .increased ? 0.8 : intensity), lineWidth: contrast == .increased ? 1.5 : 1)
+            .shadow(color: edgeColor.opacity(reduceTransparency ? 0 : intensity * 0.22), radius: 3)
+            .matchedGeometryEffect(id: "hover-edge", in: highlight)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -138,8 +160,13 @@ struct NotchView: View {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .strokeBorder(.white.opacity(contrast == .increased ? 0.6 : 0.12), lineWidth: 1)
                 }
+                .overlay { highlightEdge(radius: 22, intensity: 0.28) }
                 .shadow(color: .black.opacity(0.28), radius: 18, y: 10)
                 .transition(reduceMotion ? .opacity : .offset(y: -10).combined(with: .scale(scale: 0.96, anchor: .top)).combined(with: .opacity))
+            } else if state.mood == .peek {
+                highlightEdge(radius: 10, intensity: 0.18 + Double(state.hoverProgress) * 0.32)
+                    .frame(width: state.notchWidth + 4, height: state.topInset + 2)
+                    .offset(y: -state.topInset - 8)
             }
             Spacer(minLength: 0)
         }

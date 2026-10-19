@@ -55,7 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = BrandIcon.menuImage
         let menu = NSMenu()
-        for (title, action) in [("Calendar settings…", #selector(showSettings)), ("Preview next meeting", #selector(demo)), ("Preview current meeting", #selector(demoCurrent)), ("Back to my calendar", #selector(endDemo)), ("Quit Notchkin", #selector(quit))] {
+        for (title, action) in [("Calendar settings…", #selector(showSettings)), ("Preview next meeting", #selector(demo)), ("Preview current meeting", #selector(demoCurrent)), ("Back to my calendar", #selector(endDemo)), ("Quit Notchpop", #selector(quit))] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
             item.target = self
             menu.addItem(item)
@@ -99,7 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func showSettings() {
         if settings == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 440, height: 480), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-            window.title = "Notchkin"
+            window.title = "Notchpop"
             window.isReleasedWhenClosed = false
             window.contentView = NSHostingView(rootView: SettingsView(store: meetings, preview: { [weak self] in self?.demo() }))
             window.center()
@@ -176,7 +176,7 @@ struct SettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Your day. At a glance.").font(.system(size: 23, weight: .semibold))
-            Text("Your current meeting comes first. Otherwise, Notchkin finds the next event in the coming 7 days.").foregroundStyle(.secondary)
+            Text("Your current meeting comes first. Otherwise, Notchpop finds the next event in the coming 7 days.").foregroundStyle(.secondary)
             if store.connected {
                 Text("Show events from").font(.headline)
                 ScrollView {
@@ -189,14 +189,14 @@ struct SettingsView: View {
                 }
                 Button("Refresh calendars") { store.endDemo() }
             } else {
-                Text(store.needsSettings ? "Enable full Calendar access for Notchkin in System Settings, then click Refresh." : "Connect the calendars already synced to this Mac, including Google and Outlook accounts.")
+                Text(store.needsSettings ? "Enable full Calendar access for Notchpop in System Settings, then click Refresh." : "Connect the calendars already synced to this Mac, including Google and Outlook accounts.")
                 if store.needsSettings {
                     HStack { Button("Open System Settings") { store.openPrivacySettings() }; Button("Refresh") { store.refresh() } }
                 } else {
                     Button(store.requesting ? "Connecting…" : "Connect Calendar") { store.connect() }.disabled(store.requesting)
                 }
                 if let error = store.error { Text(error).foregroundStyle(.red).font(.caption) }
-                Text("macOS calls this Full Access. Notchkin only reads events; it does not edit them or upload them.").font(.caption).foregroundStyle(.secondary)
+                Text("macOS calls this Full Access. Notchpop only reads events; it does not edit them or upload them.").font(.caption).foregroundStyle(.secondary)
                 Spacer()
             }
             HStack {

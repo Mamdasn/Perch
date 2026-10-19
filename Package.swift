@@ -2,8 +2,8 @@
 import PackageDescription
 
 let package = Package(
-    name: "Notchkin",
+    name: "Notchpop",
     platforms: [.macOS(.v14)],
-    products: [.executable(name: "Notchkin", targets: ["Notchkin"])],
-    targets: [.executableTarget(name: "Notchkin")]
+    products: [.executable(name: "Notchpop", targets: ["Notchpop"])],
+    targets: [.executableTarget(name: "Notchpop")]
 )

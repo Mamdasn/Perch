@@ -1,6 +1,10 @@
 # Notchpop
 
-A quiet macOS notch companion. Hover to see your current or next meeting; scroll up for later events and down for earlier ones. Click an event to open it in Calendar.
+A quiet macOS notch companion. Hover to reveal your current or next meeting with a subtle fluid highlight. Nothing shows around the notch while idle.
+
+- Scroll up or press **↑** for later events; scroll down or press **↓** for earlier ones while the popup is open.
+- Click an event title to open it in Calendar, or **Join** to open its meeting link.
+- Try **Load demo meeting** in settings; the same button becomes **Use my calendar**.
 
 ## Requirements
 
@@ -9,7 +13,7 @@ A quiet macOS notch companion. Hover to see your current or next meeting; scroll
 - A notch is optional: other displays use the top center.
 - Calendars synced to the macOS Calendar app.
 
-## Build and install
+## Quick start
 
 Install Apple's Command Line Tools if needed:
 
@@ -17,19 +21,27 @@ Install Apple's Command Line Tools if needed:
 xcode-select --install
 ```
 
-Then:
+After the tools finish installing, run:
 
 ```sh
 git clone https://github.com/Mamdasn/Notchpop.git
 cd Notchpop
 bash build-app.sh
-ditto dist/Notchpop.app /Applications/Notchpop.app
-open /Applications/Notchpop.app
 ```
 
-Open **Calendar settings** from the menu-bar icon, click **Connect Calendar**, and grant access. Notchpop reads events locally; it never edits or uploads them. Quit the app before replacing it with a new build.
+The script builds and signs the app, quits any running Notchpop, installs it in `/Applications`, and launches it. Run `bash build-app.sh` again after changing the code. Installation requires write access to `/Applications`.
+
+Open **Calendar settings** from the menu-bar icon, click **Connect Calendar**, and grant access. Then hover over the notch. Notchpop reads events locally; it never edits or uploads them.
 
 The build is locally signed, not notarized. Calendar event deep links and multi-display/full-screen behavior may vary across macOS versions.
+
+Calendar access should survive quitting and reopening the same build. The default ad-hoc signature changes when the executable changes, so installing a rebuilt app can require granting access again. Calendar selections are saved separately. To keep a consistent identity across builds, use the same installed signing certificate:
+
+```sh
+SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" bash build-app.sh
+```
+
+Switching signing identities may require granting access once more. See [Apple's code-signing requirements](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements).
 
 ## Checks
 

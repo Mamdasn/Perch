@@ -1,0 +1,255 @@
+import AppKit
+import SwiftUI
+
+enum Mood { case hidden, peek, open }
+
+final class NotchState: ObservableObject {
+    @Published var mood: Mood = .hidden
+    @Published var topInset: CGFloat = 32
+    var enteredAt: Date?
+    var leftAt: Date?
+
+    func tick(now: Date, near: Bool, inside: Bool) {
+        if near || (inside && mood == .open) {
+            leftAt = nil
+            if enteredAt == nil { enteredAt = now }
+            let next: Mood = now.timeIntervalSince(enteredAt!) >= 0.35 ? .open : .peek
+            if mood != next { mood = next }
+        } else {
+            enteredAt = nil
+            if leftAt == nil { leftAt = now }
+            if now.timeIntervalSince(leftAt!) >= 0.25 && mood != .hidden { mood = .hidden }
+        }
+    }
+
+}
+
+final class OverlayPanel: NSPanel {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    let state = NotchState()
+    let meetings = MeetingStore()
+    var panel: OverlayPanel!
+    var statusItem: NSStatusItem!
+    var pulse: Timer?
+    var notchRect = NSRect.zero
+    var settings: NSWindow?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
+        panel = OverlayPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
+        panel.hasShadow = false
+        panel.hidesOnDeactivate = false
+        panel.level = .statusBar
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.isReleasedWhenClosed = false
+        panel.contentView = NSHostingView(rootView: NotchView(state: state, meetings: meetings, openSettings: { [weak self] in self?.showSettings() }))
+        positionPanel()
+        panel.orderFrontRegardless()
+
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem.button?.image = BrandIcon.menuImage
+        let menu = NSMenu()
+        for (title, action) in [("Calendar settings…", #selector(showSettings)), ("Preview next meeting", #selector(demo)), ("Preview current meeting", #selector(demoCurrent)), ("Back to my calendar", #selector(endDemo)), ("Quit Notchkin", #selector(quit))] {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            menu.addItem(item)
+        }
+        statusItem.menu = menu
+        NotificationCenter.default.addObserver(self, selector: #selector(positionPanel), name: NSApplication.didChangeScreenParametersNotification, object: nil)
+        pulse = Timer(timeInterval: 1.0 / 30, repeats: true) { [weak self] _ in self?.update() }
+        RunLoop.main.add(pulse!, forMode: .common)
+        meetings.start()
+        if CommandLine.arguments.contains("--preview-meeting") {
+            demoCurrent()
+        }
+    }
+
+    @objc func positionPanel() {
+        guard let screen = NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }) ?? NSScreen.main else { return }
+        let top = screen.frame.maxY
+        if let left = screen.auxiliaryTopLeftArea, let right = screen.auxiliaryTopRightArea {
+            notchRect = NSRect(x: left.maxX, y: top - screen.safeAreaInsets.top, width: right.minX - left.maxX, height: screen.safeAreaInsets.top)
+        } else {
+            notchRect = NSRect(x: screen.frame.midX - 95, y: top - 28, width: 190, height: 28)
+        }
+        state.topInset = notchRect.height
+        panel.setFrame(NSRect(x: notchRect.midX - 230, y: top - 340, width: 460, height: 340), display: true)
+    }
+
+    func update() {
+        let mouse = NSEvent.mouseLocation
+        let near = notchRect.insetBy(dx: -8, dy: -8).contains(mouse)
+        // Only the visible card receives clicks; the menu bar and transparent margins pass through.
+        let cardRect = NSRect(x: notchRect.midX - 180, y: notchRect.minY - 282, width: 360, height: 282)
+        let inside = cardRect.contains(mouse)
+        state.tick(now: Date(), near: near, inside: inside)
+        panel.ignoresMouseEvents = !(inside && state.mood == .open)
+    }
+
+    @objc func demo() { meetings.demo(current: false) }
+    @objc func demoCurrent() { meetings.demo(current: true) }
+    @objc func endDemo() { meetings.endDemo() }
+    @objc func quit() { NSApp.terminate(nil) }
+    @objc func showSettings() {
+        if settings == nil {
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 440, height: 480), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            window.title = "Notchkin"
+            window.isReleasedWhenClosed = false
+            window.contentView = NSHostingView(rootView: SettingsView(store: meetings, preview: { [weak self] in self?.demo() }))
+            window.center()
+            settings = window
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        settings?.makeKeyAndOrderFront(nil)
+    }
+}
+
+struct NotchView: View {
+    @ObservedObject var state: NotchState
+    @ObservedObject var meetings: MeetingStore
+    var openSettings: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Color.clear.frame(height: state.topInset + 8)
+            if state.mood == .open {
+                TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                    MeetingPager(store: meetings, now: timeline.date, openSettings: openSettings)
+                }
+                .padding(22)
+                .frame(width: 360, height: 274, alignment: .topLeading)
+                .background {
+                    if reduceTransparency {
+                        RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color(nsColor: .windowBackgroundColor))
+                    } else {
+                        NotchMaterial().clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    }
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .strokeBorder(.white.opacity(contrast == .increased ? 0.6 : 0.12), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.28), radius: 18, y: 10)
+                .transition(reduceMotion ? .opacity : .offset(y: -10).combined(with: .scale(scale: 0.96, anchor: .top)).combined(with: .opacity))
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(width: 460, height: 340, alignment: .top)
+        .environment(\.colorScheme, .dark)
+        .animation(reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.32, dampingFraction: 0.88), value: state.mood)
+    }
+}
+
+struct NotchMaterial: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .hudWindow
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.appearance = NSAppearance(named: .darkAqua)
+        return view
+    }
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {}
+}
+
+struct PillStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.font(.system(size: 12, weight: .semibold))
+            .padding(.horizontal, 14).padding(.vertical, 9)
+            .foregroundStyle(.primary)
+            .background(.primary.opacity(configuration.isPressed ? 0.2 : 0.1), in: RoundedRectangle(cornerRadius: 9))
+            .contentShape(RoundedRectangle(cornerRadius: 9))
+    }
+}
+struct SettingsView: View {
+    @ObservedObject var store: MeetingStore
+    var preview: () -> Void
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Your day. At a glance.").font(.system(size: 23, weight: .semibold))
+            Text("Your current meeting comes first. Otherwise, Notchkin finds the next event in the coming 7 days.").foregroundStyle(.secondary)
+            if store.connected {
+                Text("Show events from").font(.headline)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(store.calendars) { calendar in
+                            Toggle(calendar.title, isOn: Binding(get: { !store.excluded.contains(calendar.id) }, set: { store.setEnabled($0, id: calendar.id) }))
+                        }
+                        if store.calendars.isEmpty { Text("Add an account in the macOS Calendar app, then refresh.").foregroundStyle(.secondary) }
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                }
+                Button("Refresh calendars") { store.endDemo() }
+            } else {
+                Text(store.needsSettings ? "Enable full Calendar access for Notchkin in System Settings, then click Refresh." : "Connect the calendars already synced to this Mac, including Google and Outlook accounts.")
+                if store.needsSettings {
+                    HStack { Button("Open System Settings") { store.openPrivacySettings() }; Button("Refresh") { store.refresh() } }
+                } else {
+                    Button(store.requesting ? "Connecting…" : "Connect Calendar") { store.connect() }.disabled(store.requesting)
+                }
+                if let error = store.error { Text(error).foregroundStyle(.red).font(.caption) }
+                Text("macOS calls this Full Access. Notchkin only reads events; it does not edit them or upload them.").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+            }
+            HStack {
+                Button(store.isDemo ? "Use my calendar" : "Load demo meeting") {
+                    if store.isDemo { store.endDemo() } else { preview() }
+                }
+                .help(store.isDemo ? "Return to your calendar events." : "Then hover over the notch to preview.")
+                Spacer()
+                Text("All-day events stay out of the way.").font(.caption).foregroundStyle(.secondary)
+            }
+        }.padding(28).frame(width: 440, height: 480)
+    }
+}
+
+if CommandLine.arguments.contains("--self-test") {
+    func check(_ condition: @autoclosure () -> Bool, _ label: String) {
+        guard condition() else { fatalError("Failed: \(label)") }
+        print("PASS: \(label)")
+    }
+    let model = NotchState()
+    let now = Date()
+    model.tick(now: now, near: false, inside: false)
+    check(model.mood == .hidden, "Idle overlay stays completely hidden")
+    model.tick(now: now, near: true, inside: false)
+    check(model.mood == .peek, "Proximity peeks without opening immediately")
+    model.tick(now: now.addingTimeInterval(0.61), near: true, inside: false)
+    check(model.mood == .open, "Continuous dwell reveals card")
+    model.tick(now: now.addingTimeInterval(1), near: false, inside: true)
+    check(model.mood == .open, "Card stays open while interacting")
+    model.tick(now: now.addingTimeInterval(2), near: false, inside: false)
+    model.tick(now: now.addingTimeInterval(2.5), near: false, inside: false)
+    check(model.mood == .hidden, "Leaving dismisses after grace period")
+    let current = Meeting(id: "current", title: "Current", start: now.addingTimeInterval(-300), end: now.addingTimeInterval(300), calendar: "Test")
+    let next = Meeting(id: "next", title: "Next", start: now.addingTimeInterval(300), end: now.addingTimeInterval(600), calendar: "Test")
+    check(Meeting.featured(in: [next, current], at: now)?.id == "current", "Current meeting has priority")
+    check(Meeting.featured(in: [next, current], at: now.addingTimeInterval(300))?.id == "next", "Exact end boundary advances to next meeting")
+    check(Meeting.featured(in: [next, current], at: now.addingTimeInterval(700)) == nil, "Ended meetings disappear after sleep")
+    check(Meeting.featured(in: [next], at: now)?.id == "next", "Upcoming event is shown")
+    check(current.progress(at: now) == 0.5, "Meeting progress is based on dates")
+    check(Meeting.conferenceURL(in: "Meet: https://meet.google.com/abc-defg-hij")?.host == "meet.google.com", "Conference URL is extracted")
+    check(Meeting.conferenceURL(in: "https://zoom.us.evil.example/j/123") == nil, "Lookalike hosts do not become Join buttons")
+    check(Meeting.conferenceURL(in: "file:///tmp/test") == nil, "Non-HTTPS links are excluded")
+    let linked = Meeting(id: "local", title: "Test", start: Date(timeIntervalSince1970: 0), end: now, calendar: "Test", calendarItemIdentifier: "event/id?#")
+    check(linked.calendarURL?.absoluteString == "ical://ekevent/19700101T000000Z/event%2Fid%3F%23?method=show&options=more", "Event link uses UTC occurrence date and safely encoded identifier")
+    check(current.calendarURL == nil, "Demo events do not link to unrelated Calendar events")
+    check(MeetingNavigation.ordered([next, current]).map(\.id) == ["current", "next"], "Browsing orders meetings chronologically")
+    check(MeetingNavigation.target(index: 0, step: 1, count: 2) == 1, "Scroll up selects the next meeting")
+    check(MeetingNavigation.target(index: 1, step: -1, count: 2) == 0, "Scroll down selects the previous meeting")
+    check(MeetingNavigation.target(index: 0, step: -1, count: 2) == nil && MeetingNavigation.target(index: 1, step: 1, count: 2) == nil, "Browsing stops at either end without wrapping")
+    exit(0)
+}
+
+let app = NSApplication.shared
+let delegate = AppDelegate()
+app.delegate = delegate
+app.run()

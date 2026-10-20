@@ -17,7 +17,17 @@ A quiet macOS notch companion. Hover to reveal your current or next meeting with
 - A notch is optional: other displays use the top center.
 - Calendars synced to the macOS Calendar app.
 
-## Quick start
+## Download and install
+
+1. Download **Notchpop-0.1.0-universal.zip** from the [latest release](https://github.com/Mamdasn/Notchpop/releases/latest).
+2. Unzip it and move **Notchpop.app** to **Applications**.
+3. Open Notchpop, then choose **Settings → Calendars → Connect Calendar** from its menu-bar icon.
+
+The download supports Apple Silicon and Intel Macs running macOS 14 or later. No build tools are needed.
+
+This release is locally signed, not notarized by Apple. If macOS blocks it, and you trust this download, open **System Settings → Privacy & Security → Open Anyway** after attempting to launch it. See [Apple's instructions](https://support.apple.com/102445).
+
+## Build from source
 
 Install Apple's Command Line Tools if needed:
 

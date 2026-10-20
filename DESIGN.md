@@ -1,16 +1,16 @@
 # Notchpop design
 
-Settings uses a 480 × 460 pt native tabbed window. Calendars contains a scrollable checkbox list and a refresh action; General groups startup and the in-place demo toggle. Connected users see calendar controls rather than onboarding copy.
+Settings uses a 480 × 460 pt native tabbed window. Calendars contains a scrollable checkbox list, a refresh action, and a Preview group available before and after Calendar setup. Load demo meeting opens a temporary sample immediately and keeps the same label. It waits up to eight seconds for the pointer; once entered, normal hover dismissal applies. Closing the preview restores calendar data. General contains startup settings. Connected users see calendar controls rather than onboarding copy.
 
 Launch at login is an opt-in setting backed by `SMAppService.mainApp` in `LoginSettings.swift`. It reflects macOS registration status, offers a System Settings link when approval is needed, and surfaces registration errors. No helper or LaunchAgent is required. Actual login after a restart remains a manual validation step.
 
 SwiftUI handles content and native material; AppKit handles the nonactivating overlay and menu bar. The panel becomes key when the popup opens to receive arrow keys, and relinquishes key status when dismissed. Keyboard handling is local to the panel; modified arrow shortcuts pass through.
 
-The idle overlay has no visible content. A 350 ms hover reveals a compact 336 × 234 pt meeting card with 18 pt padding and a two-line, 19 pt title; leaving dismisses it after a 250 ms grace period. Displays without a notch use the top center. Demo commands only select sample data, and do not reveal the card. Launch does not open settings automatically.
+The idle overlay has no visible content. A 350 ms hover reveals a compact 336 × 234 pt meeting card with 18 pt padding and a two-line, 19 pt title; leaving dismisses it after a 250 ms grace period. Displays without a notch use the top center. Settings preview reveals the card automatically; menu-bar demo commands only select sample data. Launch does not open settings automatically.
 
 The surface uses dark native material, a subtle one-point border, system typography, and green to indicate an ongoing event. The icon is a shared original vector mark rendered as a template menu icon and a full-resolution macOS app icon.
 
-The current meeting takes priority, otherwise the next meeting is featured. Scroll up or press Up for later events; scroll down or press Down for earlier ones. Chevron buttons use the same navigation handler and boundaries, with no wrapping. Event changes use a short vertical slide and fade; scroll momentum is ignored. Clicking an event title opens its Calendar event; Join opens its conference link. The demo button changes to “Use my calendar” in place.
+The current meeting takes priority, otherwise the next meeting is featured. Scroll up or press Up for later events; scroll down or press Down for earlier ones. Chevron buttons use the same navigation handler and boundaries, with no wrapping. Event changes use a short vertical slide and fade; scroll momentum is ignored. Clicking an event title opens its Calendar event; Join opens its conference link.
 
 The popup rolls down from the display's top edge in 320 ms, settles 18 pt below the notch, and retreats above the display on dismissal. Clipping applies at the screen edge rather than below the notch. A delicate hover outline grows from 2.5% to 8% opacity. A single centered Bézier bridge stretches toward the card, thins, and fades. A ring made from two rounded rectangles expands upward with the lag between card and fluid progress, then settles over 480 ms. This is a simple visual approximation, without particles or sampled perimeter waves. Card and fluid timing are independent.
 

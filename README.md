@@ -5,7 +5,7 @@ A quiet macOS notch companion. Hover to reveal your current or next meeting with
 - Scroll up or press **↑** for later events; scroll down or press **↓** for earlier ones while the popup is open.
 - Click an event title to open it in Calendar, or **Join** to open its meeting link.
 - Organizer names and initials appear on the event card when available.
-- Try **Load demo meeting** under **Settings → General**; the same button becomes **Use my calendar**.
+- Click **Load demo meeting** under **Settings → Calendars → Preview** to show a sample immediately. Move your pointer just below the notch to explore it. Your calendar returns automatically when the preview closes.
 
 ## Requirements
 

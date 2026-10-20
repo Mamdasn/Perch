@@ -47,6 +47,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var pulse: Timer?
     var notchRect = NSRect.zero
     var settings: NSWindow?
+    private var previewUntil: Date?
+    private var temporaryPreview = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -99,18 +101,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Only the visible card receives clicks; the menu bar and transparent margins pass through.
         let cardRect = NSRect(x: notchRect.midX - 168, y: notchRect.minY - 252, width: 336, height: 252)
         let inside = cardRect.contains(mouse)
+        let now = Date()
+        if inside { previewUntil = nil }
         let wasOpen = state.mood == .open
-        state.tick(now: Date(), near: near, inside: inside)
+        state.tick(now: now, near: near || (previewUntil.map { now < $0 } ?? false), inside: inside)
         if state.mood == .open && !wasOpen && settings?.isVisible != true {
             panel.makeKey()
         } else if state.mood != .open && wasOpen && panel.isKeyWindow {
             panel.resignKey()
         }
         panel.ignoresMouseEvents = !(inside && state.mood == .open)
+        if temporaryPreview && state.mood == .hidden {
+            temporaryPreview = false
+            previewUntil = nil
+            meetings.endDemo()
+        }
     }
 
     @objc func demo() { meetings.demo(current: false) }
     @objc func demoCurrent() { meetings.demo(current: true) }
+    func previewMeeting() {
+        meetings.demo(current: false)
+        temporaryPreview = true
+        previewUntil = Date().addingTimeInterval(8)
+        if state.mood != .open {
+            state.mood = .peek
+            state.enteredAt = Date().addingTimeInterval(-0.35)
+            state.leftAt = nil
+        }
+    }
     @objc func endDemo() { meetings.endDemo() }
     @objc func quit() { NSApp.terminate(nil) }
     @objc func showSettings() {
@@ -120,7 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.isReleasedWhenClosed = false
             window.hidesOnDeactivate = false
             window.delegate = self
-            window.contentView = NSHostingView(rootView: SettingsView(store: meetings, preview: { [weak self] in self?.demo() }))
+            window.contentView = NSHostingView(rootView: SettingsView(store: meetings, preview: { [weak self] in self?.previewMeeting() }))
             window.center()
             settings = window
         }
@@ -238,6 +257,7 @@ struct PillStyle: ButtonStyle {
 struct SettingsView: View {
     @ObservedObject var store: MeetingStore
     var preview: () -> Void
+    @State private var hasPreviewed = false
     var body: some View {
         TabView {
             calendarSettings
@@ -245,14 +265,6 @@ struct SettingsView: View {
             Form {
                 Section("Startup") {
                     LoginSettings()
-                }
-                Section("Preview") {
-                    HStack {
-                        Text(store.isDemo ? "Demo meetings are showing" : "Try sample meetings")
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        demoButton
-                    }
                 }
             }
             .formStyle(.grouped)
@@ -310,14 +322,33 @@ struct SettingsView: View {
                 Text("macOS calls this Full Access. Notchpop only reads events; it does not edit them or upload them.").font(.caption).foregroundStyle(.secondary)
                 Spacer()
             }
+            GroupBox {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(store.isDemo ? "Demo meetings are showing" : "Try sample meetings")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        demoButton
+                    }
+                    if hasPreviewed {
+                        Text("Move your pointer just below the notch to explore the preview.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } label: {
+                Text("Preview").font(.headline)
+            }
         }.padding(20)
     }
 
     private var demoButton: some View {
-        Button(store.isDemo ? "Use my calendar" : "Load demo meeting") {
-            if store.isDemo { store.endDemo() } else { preview() }
+        Button("Load demo meeting") {
+            hasPreviewed = true
+            preview()
         }
-        .help(store.isDemo ? "Return to your calendar events." : "Then hover over the notch to preview.")
+        .help("Show a sample meeting at the notch.")
     }
 }
 

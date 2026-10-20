@@ -102,7 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = BrandIcon.menuImage
         let menu = NSMenu()
-        for (title, action) in [("Settings…", #selector(showSettings)), ("Preview next meeting", #selector(demo)), ("Preview current meeting", #selector(demoCurrent)), ("Back to my calendar", #selector(endDemo)), ("Quit Notchpop", #selector(quit))] {
+        for (title, action) in [("Settings…", #selector(showSettings)), ("Quit Notchpop", #selector(quit))] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
             item.target = self
             menu.addItem(item)
@@ -165,8 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    @objc func demo() { meetings.demo(current: false) }
-    @objc func demoCurrent() { meetings.demo(current: true) }
+    func demoCurrent() { meetings.demo(current: true) }
     func previewMeeting() {
         suppressHoverUntilExit = false
         meetings.demo(current: false)
@@ -178,7 +177,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             state.leftAt = nil
         }
     }
-    @objc func endDemo() { meetings.endDemo() }
     @objc func quit() { NSApp.terminate(nil) }
     @objc func showSettings() {
         // Retract immediately and require a fresh hover before reopening.

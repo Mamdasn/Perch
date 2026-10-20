@@ -1,5 +1,7 @@
 # Notchpop design
 
+Invitation cards show the current user's response as compact secondary text in the header: Accepted, Maybe, No response, or Delegated. Unknown responses and events organized by the user omit the label. Declined events remain excluded. The label is informational; responses are changed in Calendar.
+
 General includes “Upcoming meeting highlight,” enabled by default and persisted with AppStorage. Turning it off immediately hides the pre-meeting reminder without changing hover feedback or popup behavior.
 
 Connected users can choose “Disconnect Calendar” in General. This clears loaded events and persists an app-level disconnect across launches while retaining calendar selections and macOS permission. Calendars returns to the connection flow; reconnecting resumes event loading.

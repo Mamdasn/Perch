@@ -12,6 +12,20 @@ struct Meeting: Identifiable, Equatable {
     var calendarItemIdentifier: String? = nil
     var organizerName: String? = nil
     var organizerEmail: String? = nil
+    var responseStatus: EKParticipantStatus? = nil
+
+    var responseLabel: String? { Self.responseLabel(for: responseStatus) }
+
+    static func responseLabel(for status: EKParticipantStatus?) -> String? {
+        switch status {
+        case .accepted: return "Accepted"
+        case .tentative: return "Maybe"
+        case .pending: return "No response"
+        case .declined: return "Declined"
+        case .delegated: return "Delegated"
+        default: return nil
+        }
+    }
 
     // Calendar's event deep link includes the occurrence date for recurring events.
     var calendarURL: URL? {
@@ -151,7 +165,9 @@ final class MeetingStore: ObservableObject {
                            organizerEmail: event.organizer.flatMap { participant in
                                participant.url.scheme?.lowercased() == "mailto"
                                    ? String(participant.url.absoluteString.dropFirst(7)).removingPercentEncoding : nil
-                           })
+                           },
+                           responseStatus: event.organizer?.isCurrentUser == true ? nil :
+                               event.attendees?.first(where: \.isCurrentUser)?.participantStatus)
         }
     }
 
@@ -210,6 +226,14 @@ struct MeetingCard: View {
                     .font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
                 if store.isDemo { Text("DEMO").font(.system(size: 8, weight: .semibold)).foregroundStyle(.secondary).padding(4).background(.white.opacity(0.08), in: Capsule()) }
                 Spacer()
+                if let response = meeting?.responseLabel {
+                    Text(response)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .accessibilityLabel("Your response: \(response)")
+                        .help("Your invitation response: \(response)")
+                }
                 Button(action: openSettings) { Image(systemName: "ellipsis").frame(width: 22, height: 20) }
                     .buttonStyle(.plain).foregroundStyle(.secondary).help("Settings")
                     .accessibilityLabel("Settings")

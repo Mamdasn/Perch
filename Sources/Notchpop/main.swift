@@ -448,6 +448,11 @@ if CommandLine.arguments.contains("--self-test") {
         print("PASS: \(label)")
     }
     let model = NotchState()
+    check(Meeting.responseLabel(for: .accepted) == "Accepted", "Accepted invitation shows your response")
+    check(Meeting.responseLabel(for: .tentative) == "Maybe", "Tentative invitation uses Calendar's Maybe label")
+    check(Meeting.responseLabel(for: .pending) == "No response", "Unanswered invitation is identified")
+    check(Meeting.responseLabel(for: nil) == nil && Meeting.responseLabel(for: .unknown) == nil,
+          "Missing or unknown responses do not imply acceptance")
     let now = Date()
     let testDomain = "Notchpop.DisconnectTests.\(UUID().uuidString)"
     let testDefaults = UserDefaults(suiteName: testDomain)!

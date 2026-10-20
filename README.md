@@ -21,7 +21,7 @@ A quiet macOS notch companion. Hover to reveal your current or next meeting with
 
 ## Download and install
 
-1. Download **Notchpop-0.1.0-universal.zip** from the [latest release](https://github.com/Mamdasn/Notchpop/releases/latest).
+1. Download the **Notchpop universal ZIP** from the [latest release](https://github.com/Mamdasn/Notchpop/releases/latest).
 2. Unzip it and move **Notchpop.app** to **Applications**.
 3. Open Notchpop, then choose **Settings → Calendars → Connect Calendar** from its menu-bar icon.
 

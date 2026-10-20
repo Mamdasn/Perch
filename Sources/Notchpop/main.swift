@@ -111,7 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = BrandIcon.menuImage
         let menu = NSMenu()
-        for (title, action) in [("Settings…", #selector(showSettings)), ("Quit Notchpop", #selector(quit))] {
+        for (title, action) in [("Settings…", #selector(showSettings)), ("View Source on GitHub", #selector(openSource)), ("Quit Notchpop", #selector(quit))] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
             item.target = self
             menu.addItem(item)
@@ -187,6 +187,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
     @objc func quit() { NSApp.terminate(nil) }
+    @objc func openSource() {
+        guard let url = URL(string: "https://github.com/Mamdasn/Notchpop") else { return }
+        NSWorkspace.shared.open(url)
+    }
     @objc func showSettings() {
         // Retract immediately and require a fresh hover before reopening.
         suppressHoverUntilExit = true
@@ -216,6 +220,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window === settings else { return }
         NSApp.setActivationPolicy(.accessory)
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showSettings()
+        return true
     }
 }
 
@@ -341,8 +350,16 @@ struct SettingsView: View {
     var body: some View {
         TabView {
             calendarSettings
-                .tabItem { Label("Calendars", systemImage: "calendar") }
-            Form {
+                .tabItem { Text("Calendars") }
+            generalSettings
+                .tabItem { Text("General") }
+        }
+        .padding(16)
+        .frame(width: 480, height: 460)
+    }
+
+    private var generalSettings: some View {
+        Form {
                 Section("Startup") {
                     LoginSettings()
                 }
@@ -368,8 +385,8 @@ struct SettingsView: View {
                     Text("Show a subtle highlight during the five minutes before a meeting.")
                 }
                 if store.connected {
-                    Section {
-                        LabeledContent("Calendar connection") {
+                    Section("Calendar") {
+                        LabeledContent("Connected") {
                             Button("Disconnect Calendar") {
                                 state.hoverReminder(false, at: Date())
                                 state.reminderPreviewStart = nil
@@ -380,67 +397,69 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
-            .tabItem { Label("General", systemImage: "gearshape") }
-        }
-        .padding(16)
-        .frame(width: 480, height: 460)
     }
 
     private var calendarSettings: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if store.connected {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Your calendars").font(.headline)
-                        Text("Choose which calendars appear at the notch.")
-                            .font(.callout).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Button { store.endDemo() } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .help("Refresh calendars").accessibilityLabel("Refresh calendars")
-                }
-                List {
+        VStack(alignment: .leading, spacing: 0) {
+            Form {
+                if store.connected {
+                    Section {
                         ForEach(store.calendars) { calendar in
                             Toggle(calendar.title, isOn: Binding(get: { !store.excluded.contains(calendar.id) }, set: { store.setEnabled($0, id: calendar.id) }))
                                 .toggleStyle(.checkbox)
-                                .padding(.vertical, 4)
                         }
                         if store.calendars.isEmpty {
                             Text("Add an account in Calendar, then refresh.")
-                                .foregroundStyle(.secondary).padding(.vertical, 12)
+                                .foregroundStyle(.secondary)
                         }
-                }
-                .listStyle(.inset)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                HStack {
-                    Text("All-day events are hidden.").font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    if store.isDemo {
-                        Text("Demo mode").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-            } else {
-                Text("Connect your calendar").font(.title2.weight(.semibold))
-                Text(store.needsSettings ? "Enable full Calendar access for Notchpop in System Settings, then click Refresh." : "Connect the calendars already synced to this Mac, including Google and Outlook accounts.")
-                    .foregroundStyle(.secondary)
-                if store.needsSettings {
-                    HStack {
-                        Button("Open System Settings") { store.openPrivacySettings() }
-                        Button("Refresh") {
-                            if store.disconnected { store.connect() } else { store.refresh() }
+                    } header: {
+                        HStack {
+                            Text("Calendars")
+                            Spacer()
+                            Button { store.endDemo() } label: {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            .buttonStyle(.borderless)
+                            .help("Refresh calendars")
+                            .accessibilityLabel("Refresh calendars")
                         }
+                    } footer: {
+                        Text("Choose the calendars shown at the notch. All-day events are hidden.")
                     }
                 } else {
-                    Button(store.requesting ? "Connecting…" : "Connect Calendar") { store.connect() }.disabled(store.requesting)
+                    Section {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text(store.needsSettings ? "Allow Calendar access in System Settings, then refresh." : "See meetings from the calendars synced to this Mac, including Google and Outlook.")
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if store.needsSettings {
+                                HStack {
+                                    Button("Open System Settings") { store.openPrivacySettings() }
+                                    Button("Refresh") {
+                                        if store.disconnected { store.connect() } else { store.refresh() }
+                                    }
+                                }
+                            } else {
+                                Button(store.requesting ? "Connecting…" : "Connect Calendar") { store.connect() }
+                                    .disabled(store.requesting)
+                            }
+                            if let error = store.error {
+                                Text(error).foregroundStyle(.red).font(.callout)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    } header: {
+                        Text("Connect your calendar")
+                    } footer: {
+                        Text("macOS requests Full Access. Notchpop only reads events; it never edits or uploads them.")
+                    }
                 }
-                if let error = store.error { Text(error).foregroundStyle(.red).font(.caption) }
-                Text("macOS calls this Full Access. Notchpop only reads events; it does not edit them or upload them.").font(.caption).foregroundStyle(.secondary)
-                Spacer()
             }
+            .formStyle(.grouped)
             demoButton
-        }.padding(20)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+        }
     }
 
     private var demoButton: some View {

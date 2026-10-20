@@ -49,6 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var settings: NSWindow?
     private var previewUntil: Date?
     private var temporaryPreview = false
+    private var suppressHoverUntilExit = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -101,6 +102,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Only the visible card receives clicks; the menu bar and transparent margins pass through.
         let cardRect = NSRect(x: notchRect.midX - 168, y: notchRect.minY - 252, width: 336, height: 252)
         let inside = cardRect.contains(mouse)
+        if suppressHoverUntilExit {
+            if near || inside { return }
+            suppressHoverUntilExit = false
+        }
         let now = Date()
         if inside { previewUntil = nil }
         let wasOpen = state.mood == .open
@@ -121,6 +126,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc func demo() { meetings.demo(current: false) }
     @objc func demoCurrent() { meetings.demo(current: true) }
     func previewMeeting() {
+        suppressHoverUntilExit = false
         meetings.demo(current: false)
         temporaryPreview = true
         previewUntil = Date().addingTimeInterval(8)
@@ -133,6 +139,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc func endDemo() { meetings.endDemo() }
     @objc func quit() { NSApp.terminate(nil) }
     @objc func showSettings() {
+        // Retract immediately and require a fresh hover before reopening.
+        suppressHoverUntilExit = true
+        previewUntil = nil
+        state.mood = .hidden
+        state.enteredAt = nil
+        state.leftAt = nil
+        state.hoverProgress = 0
+        panel.ignoresMouseEvents = true
+        if panel.isKeyWindow { panel.resignKey() }
         if settings == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 460), styleMask: [.titled, .closable], backing: .buffered, defer: false)
             window.title = "Notchpop Settings"

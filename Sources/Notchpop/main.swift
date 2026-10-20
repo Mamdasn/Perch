@@ -430,25 +430,12 @@ struct SettingsView: View {
                 Text("macOS calls this Full Access. Notchpop only reads events; it does not edit them or upload them.").font(.caption).foregroundStyle(.secondary)
                 Spacer()
             }
-            GroupBox {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(store.isDemo ? "Preview ready" : "Try sample meetings")
-                            .font(.callout)
-                        Spacer()
-                        demoButton
-                    }
-                }
-                .padding(8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            } label: {
-                Text("Preview").font(.headline)
-            }
+            demoButton
         }.padding(20)
     }
 
     private var demoButton: some View {
-        Button("Load demo meeting") {
+        Button("Load Demo Meeting") {
             preview()
         }
         .help("Show a sample meeting at the notch.")

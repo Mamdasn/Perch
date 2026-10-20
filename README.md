@@ -1,6 +1,6 @@
 # Notchpop
 
-A quiet macOS notch companion. Hover to reveal your current or next meeting with a subtle fluid highlight. Nothing shows around the notch while idle.
+A quiet macOS notch companion. Hover to reveal your current or next meeting with a subtle fluid highlight. When no meeting is in progress, the final five minutes before the next meeting bring a thin blue-to-green highlight around the notch—or a small top-center line on displays without a notch. It disappears when the meeting starts.
 
 - Scroll up or press **↑** for later events; scroll down or press **↓** for earlier ones while the popup is open.
 - Click an event title to open it in Calendar, or **Join** to open its meeting link.

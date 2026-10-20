@@ -7,6 +7,7 @@ final class NotchState: ObservableObject {
     @Published var mood: Mood = .hidden
     @Published var topInset: CGFloat = 32
     @Published var notchWidth: CGFloat = 190
+    @Published var hasNotch = false
     @Published var hoverProgress: CGFloat = 0
     var enteredAt: Date?
     var leftAt: Date?
@@ -87,8 +88,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard let screen = NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }) ?? NSScreen.main else { return }
         let top = screen.frame.maxY
         if let left = screen.auxiliaryTopLeftArea, let right = screen.auxiliaryTopRightArea {
+            state.hasNotch = true
             notchRect = NSRect(x: left.maxX, y: top - screen.safeAreaInsets.top, width: right.minX - left.maxX, height: screen.safeAreaInsets.top)
         } else {
+            state.hasNotch = false
             notchRect = NSRect(x: screen.frame.midX - 95, y: top - 28, width: 190, height: 28)
         }
         state.topInset = notchRect.height
@@ -217,6 +220,16 @@ struct NotchView: View {
         }
         .frame(width: 460, height: 340, alignment: .top)
         .clipped()
+        .overlay(alignment: .top) {
+            TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                if !meetings.isDemo,
+                   let progress = MeetingReminder.progress(in: meetings.meetings, at: timeline.date) {
+                    MeetingReminderEdge(progress: progress, hasNotch: state.hasNotch,
+                                        width: state.notchWidth, height: state.topInset)
+                }
+            }
+            .allowsHitTesting(false)
+        }
         .overlay(alignment: .top) {
             if state.mood == .peek {
                 highlightEdge(radius: 10, intensity: 0.025 + Double(state.hoverProgress) * 0.055)
@@ -381,6 +394,13 @@ if CommandLine.arguments.contains("--self-test") {
     check(model.mood == .hidden, "Leaving dismisses after grace period")
     let current = Meeting(id: "current", title: "Current", start: now.addingTimeInterval(-300), end: now.addingTimeInterval(300), calendar: "Test")
     let next = Meeting(id: "next", title: "Next", start: now.addingTimeInterval(300), end: now.addingTimeInterval(600), calendar: "Test")
+    check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(-1)) == nil, "Reminder stays hidden before five minutes")
+    check(MeetingReminder.progress(in: [next], at: now) == 0, "Reminder starts blue at five minutes")
+    check(MeetingReminder.progress(in: [next, current], at: now) == nil, "Ongoing meetings suppress upcoming reminders")
+    check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(150)) == 0.5, "Reminder color follows elapsed time")
+    check((MeetingReminder.progress(in: [next], at: now.addingTimeInterval(299)) ?? 0) > 0.99, "Reminder reaches green just before start")
+    check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(300)) == nil, "Reminder disappears at the meeting start")
+    check(MeetingReminder.progress(in: [], at: now) == nil, "No reminder without upcoming meetings")
     check(Meeting.featured(in: [next, current], at: now)?.id == "current", "Current meeting has priority")
     check(Meeting.featured(in: [next, current], at: now.addingTimeInterval(300))?.id == "next", "Exact end boundary advances to next meeting")
     check(Meeting.featured(in: [next, current], at: now.addingTimeInterval(700)) == nil, "Ended meetings disappear after sleep")

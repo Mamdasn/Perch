@@ -8,9 +8,42 @@ final class NotchState: ObservableObject {
     @Published var topInset: CGFloat = 32
     @Published var notchWidth: CGFloat = 190
     @Published var hasNotch = false
+    @Published var notchOffsetX: CGFloat = 0
     @Published var hoverProgress: CGFloat = 0
+    @Published var reminderPreviewStart: Date?
+    private var reminderHoverStart: Date?
     var enteredAt: Date?
     var leftAt: Date?
+
+    func hoverReminder(_ hovering: Bool, at now: Date) {
+        if hovering {
+            guard reminderHoverStart == nil else { return }
+            reminderHoverStart = now
+        } else {
+            reminderHoverStart = nil
+        }
+    }
+
+    func tickReminderPreview(at now: Date) {
+        if let start = reminderPreviewStart {
+            let elapsed = now.timeIntervalSince(start)
+            if reminderHoverStart == nil && elapsed >= 5 {
+                reminderPreviewStart = nil
+            } else if elapsed >= 5.6 {
+                reminderPreviewStart = now
+            }
+        }
+        if let hover = reminderHoverStart, reminderPreviewStart == nil,
+           now.timeIntervalSince(hover) >= 0.35 {
+            reminderPreviewStart = now
+        }
+    }
+
+    func moveReminderPointer(at now: Date) {
+        if reminderHoverStart != nil && reminderPreviewStart == nil {
+            reminderHoverStart = now
+        }
+    }
 
     static func dwellProgress(elapsed: TimeInterval) -> CGFloat {
         CGFloat(min(1, max(0, elapsed / 0.35)))
@@ -96,10 +129,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         state.topInset = notchRect.height
         state.notchWidth = notchRect.width
-        panel.setFrame(NSRect(x: notchRect.midX - 230, y: top - 340, width: 460, height: 340), display: true)
+        // Whole-point placement avoids a half-point origin being rounded differently
+        // by NSWindow and the window server. Preserve the fractional notch position inside.
+        panel.setFrame(NSRect(x: floor(notchRect.midX - 230), y: top - 340, width: 460, height: 340), display: true)
+        // The reserved left/right menu areas can be asymmetric by one pixel.
+        // Center the highlight on the display, relative to the actual window.
+        state.notchOffsetX = screen.frame.midX - panel.frame.midX
     }
 
     func update() {
+        state.tickReminderPreview(at: Date())
         let mouse = NSEvent.mouseLocation
         let near = notchRect.insetBy(dx: -8, dy: -8).contains(mouse)
         // Only the visible card receives clicks; the menu bar and transparent margins pass through.
@@ -157,7 +196,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.isReleasedWhenClosed = false
             window.hidesOnDeactivate = false
             window.delegate = self
-            window.contentView = NSHostingView(rootView: SettingsView(store: meetings, preview: { [weak self] in self?.previewMeeting() }))
+            window.contentView = NSHostingView(rootView: SettingsView(store: meetings, state: state, preview: { [weak self] in self?.previewMeeting() }))
             window.center()
             settings = window
         }
@@ -222,13 +261,17 @@ struct NotchView: View {
         .frame(width: 460, height: 340, alignment: .top)
         .clipped()
         .overlay(alignment: .top) {
-            TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                if upcomingMeetingHighlight && !meetings.isDemo,
+            TimelineView(.periodic(from: .now, by: state.reminderPreviewStart == nil ? 1 : 1.0 / 30)) { timeline in
+                if let start = state.reminderPreviewStart {
+                    MeetingReminderEdge(progress: MeetingReminder.previewProgress(elapsed: timeline.date.timeIntervalSince(start)),
+                                        hasNotch: state.hasNotch, width: state.notchWidth, height: state.topInset)
+                } else if upcomingMeetingHighlight && !meetings.isDemo,
                    let progress = MeetingReminder.progress(in: meetings.meetings, at: timeline.date) {
                     MeetingReminderEdge(progress: progress, hasNotch: state.hasNotch,
                                         width: state.notchWidth, height: state.topInset)
                 }
             }
+            .offset(x: state.notchOffsetX)
             .allowsHitTesting(false)
         }
         .overlay(alignment: .top) {
@@ -285,6 +328,7 @@ struct PillStyle: ButtonStyle {
 }
 struct SettingsView: View {
     @ObservedObject var store: MeetingStore
+    @ObservedObject var state: NotchState
     var preview: () -> Void
     @AppStorage("upcomingMeetingHighlight") private var upcomingMeetingHighlight = true
     var body: some View {
@@ -297,6 +341,20 @@ struct SettingsView: View {
                 }
                 Section {
                     Toggle("Upcoming meeting highlight", isOn: $upcomingMeetingHighlight)
+                        .onContinuousHover { phase in
+                            switch phase {
+                            case .active:
+                                state.hoverReminder(!upcomingMeetingHighlight, at: Date())
+                                state.moveReminderPointer(at: Date())
+                            case .ended:
+                                state.hoverReminder(false, at: Date())
+                            }
+                        }
+                        .onChange(of: upcomingMeetingHighlight) { _, enabled in
+                            state.hoverReminder(false, at: Date())
+                            if enabled { state.reminderPreviewStart = nil }
+                        }
+                        .onDisappear { state.hoverReminder(false, at: Date()) }
                 } header: {
                     Text("Meetings")
                 } footer: {
@@ -390,6 +448,34 @@ if CommandLine.arguments.contains("--self-test") {
     }
     let model = NotchState()
     let now = Date()
+    let reminderPreview = NotchState()
+    check(MeetingReminder.previewProgress(elapsed: 5) == 1, "Preview reaches green before loop transition")
+    check(abs(MeetingReminder.previewProgress(elapsed: 5.3) - 0.5) < 0.001, "Preview blends back through teal")
+    check(MeetingReminder.previewProgress(elapsed: 5.6) < 0.001, "Preview returns smoothly to blue")
+    reminderPreview.hoverReminder(true, at: now)
+    reminderPreview.tickReminderPreview(at: now.addingTimeInterval(0.2))
+    check(reminderPreview.reminderPreviewStart == nil, "Reminder preview waits for hover dwell")
+    reminderPreview.hoverReminder(false, at: now.addingTimeInterval(0.2))
+    reminderPreview.tickReminderPreview(at: now.addingTimeInterval(0.4))
+    check(reminderPreview.reminderPreviewStart == nil, "Leaving early cancels reminder preview")
+    reminderPreview.hoverReminder(true, at: now)
+    reminderPreview.tickReminderPreview(at: now.addingTimeInterval(0.4))
+    check(reminderPreview.reminderPreviewStart != nil, "Reminder preview starts after dwell")
+    reminderPreview.tickReminderPreview(at: now.addingTimeInterval(6.1))
+    check(reminderPreview.reminderPreviewStart == now.addingTimeInterval(6.1), "Reminder preview loops after its color transition")
+    reminderPreview.hoverReminder(false, at: now.addingTimeInterval(6.2))
+    reminderPreview.tickReminderPreview(at: now.addingTimeInterval(10))
+    check(reminderPreview.reminderPreviewStart != nil, "Leaving during a loop preserves its remaining duration")
+    reminderPreview.tickReminderPreview(at: now.addingTimeInterval(11.2))
+    check(reminderPreview.reminderPreviewStart == nil, "Leaving stops the preview after the current loop")
+    reminderPreview.hoverReminder(false, at: now.addingTimeInterval(11.3))
+    reminderPreview.hoverReminder(true, at: now.addingTimeInterval(12))
+    reminderPreview.tickReminderPreview(at: now.addingTimeInterval(12.4))
+    reminderPreview.hoverReminder(false, at: now.addingTimeInterval(13))
+    reminderPreview.tickReminderPreview(at: now.addingTimeInterval(14))
+    check(reminderPreview.reminderPreviewStart != nil, "Started preview finishes after pointer leaves")
+    reminderPreview.tickReminderPreview(at: now.addingTimeInterval(17.5))
+    check(reminderPreview.reminderPreviewStart == nil, "Reminder preview clears after five seconds")
     model.tick(now: now, near: false, inside: false)
     check(model.mood == .hidden, "Idle overlay stays completely hidden")
     model.tick(now: now, near: true, inside: false)

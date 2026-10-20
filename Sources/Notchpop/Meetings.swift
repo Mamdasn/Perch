@@ -145,6 +145,23 @@ final class MeetingStore: ObservableObject {
     }
 }
 
+private struct EventContentLink<Content: View>: View {
+    let meeting: Meeting
+    let action: () -> Void
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        if meeting.calendarURL != nil {
+            Button(action: action, label: content)
+                .buttonStyle(.plain)
+                .help("Show this event in Calendar")
+                .accessibilityLabel("Show \(meeting.title) in Calendar")
+        } else {
+            content()
+        }
+    }
+}
+
 struct MeetingCard: View {
     @ObservedObject var store: MeetingStore
     var now: Date
@@ -166,7 +183,7 @@ struct MeetingCard: View {
             }
             if let meeting {
                 let current = meeting.isCurrent(at: now)
-                Button { store.openInCalendar(meeting) } label: {
+                EventContentLink(meeting: meeting, action: { store.openInCalendar(meeting) }) {
                 VStack(alignment: .leading, spacing: 0) {
                 Text(meeting.title).font(.system(size: 19, weight: .semibold))
                     .tracking(-0.5).lineLimit(2).fixedSize(horizontal: false, vertical: true)
@@ -186,19 +203,15 @@ struct MeetingCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .disabled(meeting.calendarURL == nil)
-                .help(meeting.calendarURL == nil ? "Demo event — not saved in Calendar" : "Show this event in Calendar")
-                .accessibilityLabel("Show \(meeting.title) in Calendar")
                 HStack(alignment: .center) {
-                    Button { store.openInCalendar(meeting) } label: {
+                    EventContentLink(meeting: meeting, action: { store.openInCalendar(meeting) }) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(current ? "\(max(1, Int(ceil(meeting.end.timeIntervalSince(now) / 60)))) min remaining" : upcomingLabel(meeting))
                             .font(.system(size: 13, weight: .medium)).monospacedDigit()
                         Text(store.meetings.filter({ $0.isCurrent(at: now) }).count > 1 ? "Overlapping events · check Calendar" : meeting.calendar)
                             .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
                     }
-                    }.buttonStyle(.plain).disabled(meeting.calendarURL == nil)
+                    }
                     Spacer(minLength: 8)
                     if let url = meeting.joinURL {
                         Button { NSWorkspace.shared.open(url) } label: { Label("Join", systemImage: "arrow.up.right") }

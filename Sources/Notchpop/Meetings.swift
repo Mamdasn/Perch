@@ -160,17 +160,17 @@ struct MeetingCard: View {
                 let current = meeting.isCurrent(at: now)
                 Button { store.openInCalendar(meeting) } label: {
                 VStack(alignment: .leading, spacing: 0) {
-                Text(meeting.title).font(.system(size: 22, weight: .semibold))
+                Text(meeting.title).font(.system(size: 19, weight: .semibold))
                     .tracking(-0.5).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 13)
+                    .padding(.top, 8)
                 Text("\(meeting.start.formatted(.dateTime.weekday(.abbreviated).hour().minute())) – \(meeting.end.formatted(date: .omitted, time: .shortened))")
-                    .font(.system(size: 12)).foregroundStyle(.secondary).padding(.top, 7)
-                Spacer(minLength: 12)
+                    .font(.system(size: 12)).foregroundStyle(.secondary).padding(.top, 5)
+                Spacer(minLength: 8)
                 if current {
                     ProgressView(value: meeting.progress(at: now)).tint(.green)
-                        .accessibilityLabel("Meeting elapsed").padding(.bottom, 13)
+                        .accessibilityLabel("Meeting elapsed").padding(.bottom, 8)
                 } else {
-                    Divider().padding(.bottom, 13)
+                    Divider().padding(.bottom, 8)
                 }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -201,9 +201,9 @@ struct MeetingCard: View {
                 }
             } else {
                 Image(systemName: store.connected ? "calendar.badge.checkmark" : "calendar")
-                    .font(.system(size: 25, weight: .light)).foregroundStyle(.secondary).padding(.top, 20)
+                    .font(.system(size: 22, weight: .light)).foregroundStyle(.secondary).padding(.top, 12)
                 Text(store.connected ? "A little breathing room." : "Your day. At a glance.")
-                    .font(.system(size: 21, weight: .semibold)).tracking(-0.4).padding(.top, 10)
+                    .font(.system(size: 19, weight: .semibold)).tracking(-0.4).padding(.top, 8)
                 Text(store.connected ? "No events in the next seven days." : "Connect Calendar to see your next meeting.")
                     .font(.system(size: 12)).foregroundStyle(.secondary).padding(.top, 5)
                 Spacer(minLength: 10)

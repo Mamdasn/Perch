@@ -97,7 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let mouse = NSEvent.mouseLocation
         let near = notchRect.insetBy(dx: -8, dy: -8).contains(mouse)
         // Only the visible card receives clicks; the menu bar and transparent margins pass through.
-        let cardRect = NSRect(x: notchRect.midX - 180, y: notchRect.minY - 292, width: 360, height: 292)
+        let cardRect = NSRect(x: notchRect.midX - 168, y: notchRect.minY - 252, width: 336, height: 252)
         let inside = cardRect.contains(mouse)
         let wasOpen = state.mood == .open
         state.tick(now: Date(), near: near, inside: inside)
@@ -154,8 +154,8 @@ struct NotchView: View {
                 TimelineView(.periodic(from: .now, by: 1)) { timeline in
                     MeetingPager(store: meetings, now: timeline.date, openSettings: openSettings)
                 }
-                .padding(22)
-                .frame(width: 360, height: 274, alignment: .topLeading)
+                .padding(18)
+                .frame(width: 336, height: 234, alignment: .topLeading)
                 .background {
                     if reduceTransparency {
                         RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color(nsColor: .windowBackgroundColor))
@@ -169,8 +169,8 @@ struct NotchView: View {
                 }
                 .overlay { MilkRim(progress: reduceMotion ? 1 : milkProgress, reveal: reduceMotion ? 1 : liquidProgress, reducedTransparency: reduceTransparency) }
                 .shadow(color: .black.opacity(0.28), radius: 18, y: 10)
-                .offset(y: reduceMotion ? 0 : -292 * (1 - liquidProgress))
-                .transition(reduceMotion ? .opacity : .asymmetric(insertion: .identity, removal: .offset(y: -292)))
+                .offset(y: reduceMotion ? 0 : -252 * (1 - liquidProgress))
+                .transition(reduceMotion ? .opacity : .asymmetric(insertion: .identity, removal: .offset(y: -252)))
             }
             }
             .frame(width: 460, height: 300, alignment: .top)

@@ -23,7 +23,7 @@ struct MeetingPager: View {
     private var index: Int { events.firstIndex { $0.id == selected?.id } ?? 0 }
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             ZStack {
                 MeetingCard(store: store, now: now, openSettings: openSettings, displayedMeeting: selected)
                     .id(selected?.id ?? "empty")

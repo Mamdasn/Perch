@@ -4,7 +4,7 @@ Launch at login is an opt-in setting backed by `SMAppService.mainApp` in `LoginS
 
 SwiftUI handles content and native material; AppKit handles the nonactivating overlay and menu bar. The panel becomes key when the popup opens to receive arrow keys, and relinquishes key status when dismissed. Keyboard handling is local to the panel; modified arrow shortcuts pass through.
 
-The idle overlay has no visible content. A 350 ms hover reveals a 360 × 274 pt meeting card; leaving dismisses it after a 250 ms grace period. Displays without a notch use the top center. Demo commands only select sample data, and do not reveal the card. Launch does not open settings automatically.
+The idle overlay has no visible content. A 350 ms hover reveals a compact 336 × 234 pt meeting card with 18 pt padding and a two-line, 19 pt title; leaving dismisses it after a 250 ms grace period. Displays without a notch use the top center. Demo commands only select sample data, and do not reveal the card. Launch does not open settings automatically.
 
 The surface uses dark native material, a subtle one-point border, system typography, and green to indicate an ongoing event. The icon is a shared original vector mark rendered as a template menu icon and a full-resolution macOS app icon.
 

@@ -10,6 +10,8 @@ struct Meeting: Identifiable, Equatable {
     let calendar: String
     var joinURL: URL? = nil
     var calendarItemIdentifier: String? = nil
+    var organizerName: String? = nil
+    var organizerEmail: String? = nil
 
     // Calendar's event deep link includes the occurrence date for recurring events.
     var calendarURL: URL? {
@@ -92,6 +94,7 @@ final class MeetingStore: ObservableObject {
         refresh()
     }
 
+
     func refresh() {
         access = EKEventStore.authorizationStatus(for: .event)
         guard !isDemo else { return }
@@ -110,7 +113,12 @@ final class MeetingStore: ObservableObject {
             return Meeting(id: "\(event.calendarItemIdentifier)-\(event.startDate.timeIntervalSince1970)",
                            title: event.title?.isEmpty == false ? event.title : "Untitled meeting",
                            start: event.startDate, end: event.endDate, calendar: event.calendar.title,
-                           joinURL: Meeting.conferenceURL(in: links), calendarItemIdentifier: event.calendarItemIdentifier)
+                           joinURL: Meeting.conferenceURL(in: links), calendarItemIdentifier: event.calendarItemIdentifier,
+                           organizerName: event.organizer?.name,
+                           organizerEmail: event.organizer.flatMap { participant in
+                               participant.url.scheme?.lowercased() == "mailto"
+                                   ? String(participant.url.absoluteString.dropFirst(7)).removingPercentEncoding : nil
+                           })
         }
     }
 
@@ -165,6 +173,8 @@ struct MeetingCard: View {
                     .padding(.top, 8)
                 Text("\(meeting.start.formatted(.dateTime.weekday(.abbreviated).hour().minute())) – \(meeting.end.formatted(date: .omitted, time: .shortened))")
                     .font(.system(size: 12)).foregroundStyle(.secondary).padding(.top, 5)
+                OrganizerRow(name: meeting.organizerName, email: meeting.organizerEmail)
+                    .padding(.top, 6)
                 Spacer(minLength: 8)
                 if current {
                     ProgressView(value: meeting.progress(at: now)).tint(.green)

@@ -1,6 +1,14 @@
 import AppKit
 import SwiftUI
 
+struct NotesScrollBoundsKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let next = nextValue()
+        if !next.isEmpty { value = next }
+    }
+}
+
 struct MeetingNavigation {
     static func ordered(_ items: [Meeting]) -> [Meeting] {
         items.sorted { $0.start == $1.start ? $0.id < $1.id : $0.start < $1.start }
@@ -15,8 +23,10 @@ struct MeetingPager: View {
     @ObservedObject var store: MeetingStore
     var now: Date
     var openSettings: () -> Void
+    @Binding var notesExpanded: Bool
     @State private var selectedID: String?
     @State private var direction = 1
+    @State private var notesBounds: CGRect = .zero
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var events: [Meeting] { MeetingNavigation.ordered(store.meetings) }
     private var selected: Meeting? { events.first { $0.id == selectedID } ?? Meeting.featured(in: events, at: now) ?? events.last }
@@ -25,7 +35,7 @@ struct MeetingPager: View {
     var body: some View {
         VStack(spacing: 8) {
             ZStack {
-                MeetingCard(store: store, now: now, openSettings: openSettings, displayedMeeting: selected)
+                MeetingCard(store: store, now: now, openSettings: openSettings, displayedMeeting: selected, notesExpanded: $notesExpanded)
                     .id(selected?.id ?? "empty")
                     .transition(reduceMotion ? .opacity : .asymmetric(
                         insertion: .offset(y: direction > 0 ? 20 : -20).combined(with: .opacity),
@@ -41,7 +51,11 @@ struct MeetingPager: View {
                         .disabled(index == events.count - 1).help("Next event · scroll up or ↑").accessibilityLabel("Next event")
                 }.buttonStyle(.plain).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
             }
-        }.background(ScrollCapture(onStep: move))
+        }
+            .coordinateSpace(name: "meetingPager")
+            .onPreferenceChange(NotesScrollBoundsKey.self) { notesBounds = $0 }
+            .background(ScrollCapture(notesExpanded: notesExpanded, notesBounds: notesBounds, onStep: move))
+            .onChange(of: selected?.id) { _, _ in notesExpanded = false }
     }
     private func move(_ step: Int) {
         guard let target = MeetingNavigation.target(index: index, step: step, count: events.count) else { return }
@@ -54,12 +68,22 @@ struct MeetingPager: View {
 
 // Observe this card's scrolling and arrow keys without obstructing buttons.
 struct ScrollCapture: NSViewRepresentable {
+    var notesExpanded: Bool
+    var notesBounds: CGRect
     var onStep: (Int) -> Void
     func makeNSView(context: Context) -> CaptureView { CaptureView() }
-    func updateNSView(_ view: CaptureView, context: Context) { view.onStep = onStep }
+    func updateNSView(_ view: CaptureView, context: Context) {
+        view.onStep = onStep
+        view.notesExpanded = notesExpanded
+        view.notesBounds = notesBounds
+    }
     static func dismantleNSView(_ view: CaptureView, coordinator: ()) { view.stop() }
     final class CaptureView: NSView {
         var onStep: (Int) -> Void = { _ in }
+        var notesExpanded = false
+        var notesBounds: CGRect = .zero
+        // Match SwiftUI's top-left coordinate space for the measured notes viewport.
+        override var isFlipped: Bool { true }
         private var monitor: Any?
         private var amount: CGFloat = 0
         private var fired = false
@@ -70,6 +94,17 @@ struct ScrollCapture: NSViewRepresentable {
             guard window != nil else { return }
             monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .keyDown]) { [weak self] event in
                 guard let self, event.window === self.window else { return event }
+                if self.notesExpanded {
+                    if event.type == .keyDown { return event }
+                    // SwiftUI may host scrolling without an enclosing NSScrollView.
+                    // Use the visible viewport, including padding and its scrollbar.
+                    if self.notesBounds.contains(self.convert(event.locationInWindow, from: nil)) {
+                        self.amount = 0
+                        self.fired = false
+                        self.lastTime = event.timestamp
+                        return event
+                    }
+                }
                 if event.type == .keyDown {
                     guard self.window?.isKeyWindow == true,
                           event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty,

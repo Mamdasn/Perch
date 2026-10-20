@@ -5,6 +5,8 @@ enum Mood { case hidden, peek, open }
 
 final class NotchState: ObservableObject {
     @Published var mood: Mood = .hidden
+    @Published var notesExpanded = false
+    var cardHeight: CGFloat { notesExpanded ? 394 : 286 }
     @Published var topInset: CGFloat = 32
     @Published var notchWidth: CGFloat = 190
     @Published var hasNotch = false
@@ -140,7 +142,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         state.notchWidth = notchRect.width
         // Whole-point placement avoids a half-point origin being rounded differently
         // by NSWindow and the window server. Preserve the fractional notch position inside.
-        panel.setFrame(NSRect(x: floor(notchRect.midX - 230), y: top - 340, width: 460, height: 340), display: true)
+        panel.setFrame(NSRect(x: floor(notchRect.midX - 230), y: top - 480, width: 460, height: 480), display: true)
         // The reserved left/right menu areas can be asymmetric by one pixel.
         // Center the highlight on the display, relative to the actual window.
         state.notchOffsetX = screen.frame.midX - panel.frame.midX
@@ -151,7 +153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let mouse = NSEvent.mouseLocation
         let near = NotchState.hoverRegion(for: notchRect, hasNotch: state.hasNotch).contains(mouse)
         // Only the visible card receives clicks; the menu bar and transparent margins pass through.
-        let cardRect = NSRect(x: notchRect.midX - 168, y: notchRect.minY - 252, width: 336, height: 252)
+        let cardRect = NSRect(x: notchRect.midX - 168, y: notchRect.minY - state.cardHeight - 18, width: 336, height: state.cardHeight + 18)
         let inside = cardRect.contains(mouse)
         if suppressHoverUntilExit {
             if near { return }
@@ -252,10 +254,11 @@ struct NotchView: View {
         ZStack(alignment: .top) {
             if state.mood == .open {
                 TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                    MeetingPager(store: meetings, now: timeline.date, openSettings: openSettings)
+                    MeetingPager(store: meetings, now: timeline.date, openSettings: openSettings, notesExpanded: $state.notesExpanded)
                 }
                 .padding(18)
-                .frame(width: 336, height: 234, alignment: .topLeading)
+                .frame(width: 336, height: state.cardHeight, alignment: .topLeading)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: state.notesExpanded)
                 .background {
                     if reduceTransparency {
                         RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color(nsColor: .windowBackgroundColor))
@@ -270,11 +273,11 @@ struct NotchView: View {
                 .overlay { MilkRim(progress: reduceMotion ? 1 : milkProgress, reveal: reduceMotion ? 1 : liquidProgress, reducedTransparency: reduceTransparency) }
                 .shadow(color: .black.opacity(0.28), radius: 18, y: 10)
                 // Clip at the screen edge, not at the card's resting position.
-                .offset(y: state.topInset + 18 - (reduceMotion ? 0 : (state.topInset + 292) * (1 - liquidProgress)))
-                .transition(reduceMotion ? .opacity : .asymmetric(insertion: .identity, removal: .offset(y: -(state.topInset + 292))))
+                .offset(y: state.topInset + 18 - (reduceMotion ? 0 : (state.topInset + state.cardHeight + 58) * (1 - liquidProgress)))
+                .transition(reduceMotion ? .opacity : .asymmetric(insertion: .identity, removal: .offset(y: -(state.topInset + state.cardHeight + 58))))
             }
         }
-        .frame(width: 460, height: 340, alignment: .top)
+        .frame(width: 460, height: 480, alignment: .top)
         .clipped()
         .overlay(alignment: .top) {
             TimelineView(.periodic(from: .now, by: state.reminderPreviewStart == nil ? 1 : 1.0 / 30)) { timeline in
@@ -295,7 +298,7 @@ struct NotchView: View {
                 highlightEdge(radius: 10, intensity: 0.025 + Double(state.hoverProgress) * 0.055)
                     .frame(width: state.notchWidth + 4, height: state.topInset + 2)
             } else if state.mood == .open && !reduceMotion {
-                LiquidBridge(progress: milkProgress, reveal: liquidProgress, inset: state.topInset)
+                LiquidBridge(progress: milkProgress, reveal: liquidProgress, inset: state.topInset, cardHeight: state.cardHeight)
                     .fill(edgeColor.opacity(0.09))
                     .blur(radius: reduceTransparency ? 0 : 0.7)
                     .opacity(max(0, 1 - milkProgress * 1.8))
@@ -305,6 +308,7 @@ struct NotchView: View {
         .environment(\.colorScheme, .dark)
         .animation(.easeInOut(duration: reduceMotion ? 0.12 : 0.32), value: state.mood)
         .task(id: state.mood) {
+            if state.mood != .open { state.notesExpanded = false }
             if state.mood == .open {
                 withAnimation(reduceMotion ? nil : .timingCurve(0.22, 0.55, 0.25, 1, duration: 0.32)) {
                     liquidProgress = 1
@@ -476,6 +480,11 @@ if CommandLine.arguments.contains("--self-test") {
         print("PASS: \(label)")
     }
     let model = NotchState()
+    check(Meeting.nonempty(" \n ") == nil, "Blank event details leave no empty rows")
+    check(Meeting.nonempty(" Room 2\n") == "Room 2", "Event details trim surrounding whitespace")
+    model.notesExpanded = true
+    check(model.cardHeight > 286 && model.cardHeight + model.topInset + 18 < 480, "Expanded notes fit the overlay and hover area")
+    model.notesExpanded = false
     let testNotch = NSRect(x: 600, y: 950, width: 190, height: 32)
     let hoverRegion = NotchState.hoverRegion(for: testNotch, hasNotch: true)
     check(!hoverRegion.contains(NSPoint(x: 695, y: 940)), "Hover below the notch leaves window controls accessible")

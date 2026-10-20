@@ -8,6 +8,7 @@ A quiet macOS notch companion. Hover to reveal your current or next meeting with
 - While that setting is off, rest your pointer over it to preview the blue-to-green transition in five seconds. It loops while hovered and finishes the current cycle when you move away.
 - Click an event title to open it in Calendar, or **Join** to open its meeting link.
 - Organizer names and initials appear on the event card when available.
+- Location and invited participant count appear when available. Expand **Notes** to read the agenda; scroll inside notes to read longer descriptions.
 - Invitations show your response beside the card's status. Change your response in Calendar; declined events remain hidden.
 - Hover inside the black notch to open the card; hovering below it leaves other apps' controls accessible.
 - Click **Load Demo Meeting** under **Settings → Calendars** to show a sample immediately. Move your pointer onto the card to explore it. Your calendar returns automatically when the preview closes.

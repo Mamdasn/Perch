@@ -13,6 +13,14 @@ struct Meeting: Identifiable, Equatable {
     var organizerName: String? = nil
     var organizerEmail: String? = nil
     var responseStatus: EKParticipantStatus? = nil
+    var location: String? = nil
+    var participantCount: Int = 0
+    var notes: String? = nil
+
+    static func nonempty(_ text: String?) -> String? {
+        guard let text = text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return nil }
+        return text
+    }
 
     var responseLabel: String? { Self.responseLabel(for: responseStatus) }
 
@@ -167,14 +175,21 @@ final class MeetingStore: ObservableObject {
                                    ? String(participant.url.absoluteString.dropFirst(7)).removingPercentEncoding : nil
                            },
                            responseStatus: event.organizer?.isCurrentUser == true ? nil :
-                               event.attendees?.first(where: \.isCurrentUser)?.participantStatus)
+                               event.attendees?.first(where: \.isCurrentUser)?.participantStatus,
+                           location: Meeting.nonempty(event.location),
+                           participantCount: (event.attendees ?? []).filter {
+                               $0.participantType != .room && $0.participantType != .resource
+                           }.count,
+                           notes: Meeting.nonempty(event.notes))
         }
     }
 
     func demo(current: Bool) {
         let now = Date()
         isDemo = true
-        meetings = [Meeting(id: "demo", title: "Design review", start: now.addingTimeInterval(current ? -600 : 180), end: now.addingTimeInterval(current ? 1200 : 1980), calendar: "Work · Demo calendar")]
+        meetings = [Meeting(id: "demo", title: "Design review", start: now.addingTimeInterval(current ? -600 : 180), end: now.addingTimeInterval(current ? 1200 : 1980), calendar: "Work · Demo calendar",
+                            organizerName: "Alex Morgan", location: "Studio · Room 2", participantCount: 4,
+                            notes: "Review the latest designs, discuss feedback, and agree on next steps.\n\nAgenda\n• Walk through the updated screens\n• Resolve open questions\n• Confirm owners and next steps")]
         meetings += [
             Meeting(id: "demo-before", title: "Morning catch-up", start: now.addingTimeInterval(-7200), end: now.addingTimeInterval(-5400), calendar: "Work · Demo calendar"),
             Meeting(id: "demo-next", title: "Product direction", start: now.addingTimeInterval(3600), end: now.addingTimeInterval(5400), calendar: "Work · Demo calendar"),
@@ -216,6 +231,8 @@ struct MeetingCard: View {
     var now: Date
     var openSettings: () -> Void
     var displayedMeeting: Meeting? = nil
+    @Binding var notesExpanded: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var meeting: Meeting? { displayedMeeting ?? Meeting.featured(in: store.meetings, at: now) }
 
     var body: some View {
@@ -247,8 +264,27 @@ struct MeetingCard: View {
                     .padding(.top, 8)
                 Text("\(meeting.start.formatted(.dateTime.weekday(.abbreviated).hour().minute())) – \(meeting.end.formatted(date: .omitted, time: .shortened))")
                     .font(.system(size: 12)).foregroundStyle(.secondary).padding(.top, 5)
-                OrganizerRow(name: meeting.organizerName, email: meeting.organizerEmail)
+                if meeting.organizerName != nil || meeting.organizerEmail != nil {
+                    OrganizerRow(name: meeting.organizerName, email: meeting.organizerEmail)
+                        .padding(.top, 6)
+                }
+                if meeting.location != nil || meeting.participantCount > 0 {
+                    HStack(spacing: 12) {
+                        if let location = meeting.location {
+                            Label(location, systemImage: "mappin.and.ellipse")
+                                .lineLimit(1).help(location)
+                        }
+                        Spacer(minLength: 0)
+                        if meeting.participantCount > 0 {
+                            Label("\(meeting.participantCount)", systemImage: "person.2")
+                                .fixedSize()
+                                .accessibilityLabel("\(meeting.participantCount) participants")
+                                .help("\(meeting.participantCount) invited participants")
+                        }
+                    }
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
                     .padding(.top, 6)
+                }
                 Spacer(minLength: 8)
                 if current {
                     ProgressView(value: meeting.progress(at: now)).tint(.green)
@@ -259,6 +295,29 @@ struct MeetingCard: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
+                }
+                if let notes = meeting.notes {
+                    DisclosureGroup(isExpanded: $notesExpanded) {
+                        ScrollView {
+                            Text(notes)
+                                .font(.system(size: 12))
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 6)
+                        }
+                        .frame(height: 104)
+                        .background {
+                            GeometryReader { geometry in
+                                Color.clear.preference(key: NotesScrollBoundsKey.self,
+                                                       value: geometry.frame(in: .named("meetingPager")))
+                            }
+                        }
+                    } label: {
+                        Text("Notes").font(.system(size: 11, weight: .medium))
+                    }
+                    .tint(.secondary)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: notesExpanded)
+                    .padding(.bottom, 6)
                 }
                 HStack(alignment: .center) {
                     EventContentLink(meeting: meeting, action: { store.openInCalendar(meeting) }) {
@@ -292,6 +351,9 @@ struct MeetingCard: View {
         }
         .foregroundStyle(.primary)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onChange(of: meeting?.notes) { _, notes in
+            if notes == nil { notesExpanded = false }
+        }
     }
 
     private func upcomingLabel(_ meeting: Meeting) -> String {

@@ -257,7 +257,6 @@ struct PillStyle: ButtonStyle {
 struct SettingsView: View {
     @ObservedObject var store: MeetingStore
     var preview: () -> Void
-    @State private var hasPreviewed = false
     var body: some View {
         TabView {
             calendarSettings
@@ -325,14 +324,10 @@ struct SettingsView: View {
             GroupBox {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Text(store.isDemo ? "Demo meetings are showing" : "Try sample meetings")
-                            .foregroundStyle(.secondary)
+                        Text(store.isDemo ? "Preview ready" : "Try sample meetings")
+                            .font(.callout)
                         Spacer()
                         demoButton
-                    }
-                    if hasPreviewed {
-                        Text("Move your pointer just below the notch to explore the preview.")
-                            .font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 .padding(8)
@@ -345,7 +340,6 @@ struct SettingsView: View {
 
     private var demoButton: some View {
         Button("Load demo meeting") {
-            hasPreviewed = true
             preview()
         }
         .help("Show a sample meeting at the notch.")

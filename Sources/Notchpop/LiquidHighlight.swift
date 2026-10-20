@@ -17,7 +17,7 @@ struct LiquidBridge: Shape {
         let rootRadius = 0.2 + 3.6 * pow(1 - p, 1.5)
         let footRadius = 0.5 + 5.5 * pow(1 - p, 0.85)
         let top = inset - 1
-        let bottom = max(inset + 2, inset + 18 - 252 * (1 - reveal))
+        let bottom = max(inset + 2, inset + 18 - (inset + 292) * (1 - reveal))
         let length = bottom - top
         let stretch = sqrt(8 / max(8, length))
         let waist = (0.15 + 1.6 * pow(1 - p, 2)) * stretch

@@ -147,9 +147,7 @@ struct NotchView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Color.clear.frame(height: state.topInset + 18)
-            ZStack(alignment: .top) {
+        ZStack(alignment: .top) {
             if state.mood == .open {
                 TimelineView(.periodic(from: .now, by: 1)) { timeline in
                     MeetingPager(store: meetings, now: timeline.date, openSettings: openSettings)
@@ -169,15 +167,13 @@ struct NotchView: View {
                 }
                 .overlay { MilkRim(progress: reduceMotion ? 1 : milkProgress, reveal: reduceMotion ? 1 : liquidProgress, reducedTransparency: reduceTransparency) }
                 .shadow(color: .black.opacity(0.28), radius: 18, y: 10)
-                .offset(y: reduceMotion ? 0 : -252 * (1 - liquidProgress))
-                .transition(reduceMotion ? .opacity : .asymmetric(insertion: .identity, removal: .offset(y: -252)))
+                // Clip at the screen edge, not at the card's resting position.
+                .offset(y: state.topInset + 18 - (reduceMotion ? 0 : (state.topInset + 292) * (1 - liquidProgress)))
+                .transition(reduceMotion ? .opacity : .asymmetric(insertion: .identity, removal: .offset(y: -(state.topInset + 292))))
             }
-            }
-            .frame(width: 460, height: 300, alignment: .top)
-            .clipped()
-            Spacer(minLength: 0)
         }
         .frame(width: 460, height: 340, alignment: .top)
+        .clipped()
         .overlay(alignment: .top) {
             if state.mood == .peek {
                 highlightEdge(radius: 10, intensity: 0.025 + Double(state.hoverProgress) * 0.055)

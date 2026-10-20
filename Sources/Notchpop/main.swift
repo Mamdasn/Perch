@@ -182,6 +182,7 @@ struct NotchView: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @State private var liquidProgress: CGFloat = 0
     @State private var milkProgress: CGFloat = 0
+    @AppStorage("upcomingMeetingHighlight") private var upcomingMeetingHighlight = true
     private let edgeColor = Color(red: 0.83, green: 0.94, blue: 0.96)
 
     private func highlightEdge(radius: CGFloat, intensity: Double) -> some View {
@@ -222,7 +223,7 @@ struct NotchView: View {
         .clipped()
         .overlay(alignment: .top) {
             TimelineView(.periodic(from: .now, by: 1)) { timeline in
-                if !meetings.isDemo,
+                if upcomingMeetingHighlight && !meetings.isDemo,
                    let progress = MeetingReminder.progress(in: meetings.meetings, at: timeline.date) {
                     MeetingReminderEdge(progress: progress, hasNotch: state.hasNotch,
                                         width: state.notchWidth, height: state.topInset)
@@ -285,6 +286,7 @@ struct PillStyle: ButtonStyle {
 struct SettingsView: View {
     @ObservedObject var store: MeetingStore
     var preview: () -> Void
+    @AppStorage("upcomingMeetingHighlight") private var upcomingMeetingHighlight = true
     var body: some View {
         TabView {
             calendarSettings
@@ -292,6 +294,13 @@ struct SettingsView: View {
             Form {
                 Section("Startup") {
                     LoginSettings()
+                }
+                Section {
+                    Toggle("Upcoming meeting highlight", isOn: $upcomingMeetingHighlight)
+                } header: {
+                    Text("Meetings")
+                } footer: {
+                    Text("Show a subtle highlight during the five minutes before a meeting.")
                 }
             }
             .formStyle(.grouped)

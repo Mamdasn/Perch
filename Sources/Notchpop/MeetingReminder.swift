@@ -13,11 +13,12 @@ enum MeetingReminder {
 
 /// The notch meets the screen edge: only its sides and bottom are visible.
 struct NotchOutline: Shape {
+    var spread: CGFloat = 0
     func path(in rect: CGRect) -> Path {
-        let left = rect.minX + 1
-        let right = rect.maxX - 1
-        let bottom = rect.maxY - 1
-        let radius = min(10, rect.height / 2)
+        let left = rect.minX + 1 - spread
+        let right = rect.maxX - 1 + spread
+        let bottom = rect.maxY - 1 + spread
+        let radius = min(10, rect.height / 2) + spread
         var path = Path()
         path.move(to: CGPoint(x: left, y: rect.minY))
         path.addLine(to: CGPoint(x: left, y: bottom - radius))
@@ -45,15 +46,33 @@ struct MeetingReminderEdge: View {
                                       startPoint: .leading, endPoint: .trailing)
         Group {
             if hasNotch {
-                NotchOutline()
-                    .stroke(gradient, lineWidth: contrast == .increased ? 2 : 1.5)
-                    .frame(width: width + 4, height: height + 2)
+                ZStack {
+                    if !reduceTransparency {
+                        // Thin outward bands fade to zero over six points.
+                        ForEach(1..<13) { step in
+                            NotchOutline(spread: CGFloat(step) * 0.5)
+                                .stroke(color.opacity(0.12 * pow(1 - Double(step) / 12, 2)), lineWidth: 1)
+                        }
+                    }
+                    NotchOutline()
+                        .stroke(gradient, lineWidth: contrast == .increased ? 1.5 : 0.75)
+                }
+                .frame(width: width + 4, height: height + 2)
             } else {
-                Capsule().fill(gradient).frame(width: 72, height: 2).padding(.top, 1)
+                ZStack(alignment: .top) {
+                    if !reduceTransparency {
+                        Rectangle()
+                            .fill(LinearGradient(colors: [color.opacity(0.18), .clear],
+                                                 startPoint: .top, endPoint: .bottom))
+                            .frame(width: 72, height: 6)
+                            .mask(LinearGradient(colors: [.clear, .white, .white, .clear],
+                                                 startPoint: .leading, endPoint: .trailing))
+                    }
+                    Capsule().fill(gradient).frame(width: 72, height: contrast == .increased ? 1.5 : 0.75)
+                }.padding(.top, 1)
             }
         }
         .opacity(contrast == .increased ? 1 : 0.75)
-        .shadow(color: color.opacity(reduceTransparency ? 0 : 0.15), radius: 3)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }

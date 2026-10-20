@@ -1,6 +1,8 @@
 # Notchpop design
 
-When no meeting is in progress, the nearest upcoming meeting gets a subtle reminder during its final five minutes: a 1.5 pt gradient border around the notch or a 72 × 2 pt top-center line without a notch. Color progresses from blue to green with wall-clock time, without pulsing or opening the popup. The reminder disappears at the start time and ignores demo data. Reduce Transparency removes the glow; increased contrast strengthens the border. `MeetingReminder.swift` contains timing and rendering.
+General includes “Upcoming meeting highlight,” enabled by default and persisted with AppStorage. Turning it off immediately hides the pre-meeting reminder without changing hover feedback or popup behavior.
+
+When no meeting is in progress, the nearest upcoming meeting gets a subtle reminder during its final five minutes: a 0.75 pt gradient edge along the notch's sides and bottom, or a 72 × 0.75 pt top-center line without a notch. A faint glow fades outward to full transparency over 6 pt. Color progresses from blue to green with wall-clock time, without pulsing or opening the popup. The reminder disappears at the start time and ignores demo data. Reduce Transparency removes the glow; increased contrast strengthens the edge to 1.5 pt. `MeetingReminder.swift` contains timing and rendering.
 
 Settings uses a 480 × 460 pt native tabbed window. Calendars contains a scrollable checkbox list, a refresh action, and a Preview group available before and after Calendar setup. Load demo meeting opens a temporary sample immediately and keeps the same label. It waits up to eight seconds for the pointer; once entered, normal hover dismissal applies. Closing the preview restores calendar data. General contains startup settings. Connected users see calendar controls rather than onboarding copy.
 

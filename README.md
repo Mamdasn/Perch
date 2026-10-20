@@ -3,6 +3,7 @@
 A quiet macOS notch companion. Hover to reveal your current or next meeting with a subtle fluid highlight. When no meeting is in progress, the final five minutes before the next meeting bring a thin blue-to-green highlight around the notch—or a small top-center line on displays without a notch. It disappears when the meeting starts.
 
 - Scroll up or press **↑** for later events; scroll down or press **↓** for earlier ones while the popup is open.
+- Toggle **Upcoming meeting highlight** under **Settings → General** to enable or disable the five-minute reminder. Your choice is saved.
 - Click an event title to open it in Calendar, or **Join** to open its meeting link.
 - Organizer names and initials appear on the event card when available.
 - Click **Load demo meeting** under **Settings → Calendars → Preview** to show a sample immediately. Move your pointer just below the notch to explore it. Your calendar returns automatically when the preview closes.

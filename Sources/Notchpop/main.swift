@@ -358,6 +358,17 @@ struct SettingsView: View {
                 } footer: {
                     Text("Show a subtle highlight during the five minutes before a meeting.")
                 }
+                if store.connected {
+                    Section {
+                        LabeledContent("Calendar connection") {
+                            Button("Disconnect Calendar") {
+                                state.hoverReminder(false, at: Date())
+                                state.reminderPreviewStart = nil
+                                store.disconnect()
+                            }
+                        }
+                    }
+                }
             }
             .formStyle(.grouped)
             .tabItem { Label("General", systemImage: "gearshape") }
@@ -406,7 +417,12 @@ struct SettingsView: View {
                 Text(store.needsSettings ? "Enable full Calendar access for Notchpop in System Settings, then click Refresh." : "Connect the calendars already synced to this Mac, including Google and Outlook accounts.")
                     .foregroundStyle(.secondary)
                 if store.needsSettings {
-                    HStack { Button("Open System Settings") { store.openPrivacySettings() }; Button("Refresh") { store.refresh() } }
+                    HStack {
+                        Button("Open System Settings") { store.openPrivacySettings() }
+                        Button("Refresh") {
+                            if store.disconnected { store.connect() } else { store.refresh() }
+                        }
+                    }
                 } else {
                     Button(store.requesting ? "Connecting…" : "Connect Calendar") { store.connect() }.disabled(store.requesting)
                 }
@@ -446,6 +462,22 @@ if CommandLine.arguments.contains("--self-test") {
     }
     let model = NotchState()
     let now = Date()
+    let testDomain = "Notchpop.DisconnectTests.\(UUID().uuidString)"
+    let testDefaults = UserDefaults(suiteName: testDomain)!
+    let disconnectedStore = MeetingStore(defaults: testDefaults)
+    disconnectedStore.demo(current: true)
+    disconnectedStore.disconnect()
+    check(!disconnectedStore.connected && !disconnectedStore.isDemo && disconnectedStore.meetings.isEmpty,
+          "Disconnect clears displayed events and demo state")
+    disconnectedStore.refresh()
+    check(disconnectedStore.calendars.isEmpty && disconnectedStore.meetings.isEmpty,
+          "Refreshing does not reconnect a disconnected calendar")
+    check(MeetingStore(defaults: testDefaults).disconnected, "Calendar disconnect persists across launches")
+    disconnectedStore.demo(current: false)
+    disconnectedStore.endDemo()
+    check(disconnectedStore.meetings.isEmpty && !disconnectedStore.connected,
+          "Ending a demo does not reconnect the calendar")
+    testDefaults.removePersistentDomain(forName: testDomain)
     let reminderPreview = NotchState()
     check(MeetingReminder.previewProgress(elapsed: 5) == 1, "Preview reaches green before loop transition")
     check(abs(MeetingReminder.previewProgress(elapsed: 5.3) - 0.5) < 0.001, "Preview blends back through teal")

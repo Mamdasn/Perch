@@ -57,13 +57,21 @@ final class MeetingStore: ObservableObject {
     @Published private(set) var isDemo = false
     @Published private(set) var requesting = false
     @Published private(set) var error: String?
-    @Published private(set) var excluded = Set(UserDefaults.standard.stringArray(forKey: "excludedCalendars") ?? [])
+    @Published private(set) var excluded: Set<String>
+    @Published private(set) var disconnected: Bool
+    private let defaults: UserDefaults
     private lazy var store = EKEventStore()
     private var refreshTimer: Timer?
     private var observer: NSObjectProtocol?
     private var wakeObserver: NSObjectProtocol?
 
-    var connected: Bool { access == .fullAccess }
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        excluded = Set(defaults.stringArray(forKey: "excludedCalendars") ?? [])
+        disconnected = defaults.bool(forKey: "calendarDisconnected")
+    }
+
+    var connected: Bool { !disconnected && access == .fullAccess }
     var needsSettings: Bool { access == .denied || access == .restricted || access == .writeOnly }
 
     func start() {
@@ -75,22 +83,47 @@ final class MeetingStore: ObservableObject {
 
     func connect() {
         guard !requesting else { return }
+        if EKEventStore.authorizationStatus(for: .event) == .fullAccess {
+            resumeCalendar()
+            return
+        }
         requesting = true
         error = nil
-        store.requestFullAccessToEvents { [weak self] _, error in
+        store.requestFullAccessToEvents { [weak self] granted, error in
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.requesting = false
                 self.error = error == nil ? nil : "Calendar access could not be completed. Please try again."
-                self.isDemo = false
-                self.refresh()
+                if granted {
+                    self.resumeCalendar()
+                } else {
+                    self.isDemo = false
+                    self.refresh()
+                }
             }
         }
     }
 
+    private func resumeCalendar() {
+        disconnected = false
+        defaults.set(false, forKey: "calendarDisconnected")
+        isDemo = false
+        error = nil
+        refresh()
+    }
+
+    func disconnect() {
+        disconnected = true
+        defaults.set(true, forKey: "calendarDisconnected")
+        isDemo = false
+        meetings = []
+        calendars = []
+        error = nil
+    }
+
     func setEnabled(_ enabled: Bool, id: String) {
         if enabled { excluded.remove(id) } else { excluded.insert(id) }
-        UserDefaults.standard.set(Array(excluded), forKey: "excludedCalendars")
+        defaults.set(Array(excluded), forKey: "excludedCalendars")
         refresh()
     }
 

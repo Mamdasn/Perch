@@ -2,6 +2,8 @@
 
 General includes “Upcoming meeting highlight,” enabled by default and persisted with AppStorage. Turning it off immediately hides the pre-meeting reminder without changing hover feedback or popup behavior.
 
+Connected users can choose “Disconnect Calendar” in General. This clears loaded events and persists an app-level disconnect across launches while retaining calendar selections and macOS permission. Calendars returns to the connection flow; reconnecting resumes event loading.
+
 At the notch's upper corners, the highlight curves outward over 12 pt and tapers to zero width at the display edge. The halo follows the same contour, avoiding blunt endpoints.
 
 When no meeting is in progress, the nearest upcoming meeting gets a reminder during its final five minutes: a 4 pt gradient stroke around the notch's sides and bottom, or a 72 × 2.5 pt line flush with the top edge on notchless displays. Horizontal placement uses the display's exact center relative to the overlay's actual frame; width and height use macOS's reported notch bounds. A symmetrical gradient blends system blue into system green as time advances, with a compact halo fading outward to transparency over 4 pt. A slow four-second pulse varies opacity between 80% and 100%. Reduce Motion keeps it steady; Increased Contrast uses a steady, opaque 5 pt notch stroke without glow. Reduce Transparency also removes the glow and makes the core gradient opaque before pulsing. The reminder disappears at the start time and ignores demo data. `MeetingReminder.swift` contains timing and rendering. The off-state hover preview compresses the color transition into five seconds, then blends back to blue over 0.6 seconds while hovered.

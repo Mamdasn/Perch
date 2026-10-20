@@ -4,6 +4,7 @@ A quiet macOS notch companion. Hover to reveal your current or next meeting with
 
 - Scroll up or press **↑** for later events; scroll down or press **↓** for earlier ones while the popup is open.
 - Toggle **Upcoming meeting highlight** under **Settings → General** to enable or disable the five-minute reminder. Your choice is saved.
+- **Disconnect Calendar** under **Settings → General** stops loading events until you reconnect in Calendars, including after restarting the app. It does not revoke macOS Calendar permission.
 - While that setting is off, rest your pointer over it to preview the blue-to-green transition in five seconds. It loops while hovered and finishes the current cycle when you move away.
 - Click an event title to open it in Calendar, or **Join** to open its meeting link.
 - Organizer names and initials appear on the event card when available.

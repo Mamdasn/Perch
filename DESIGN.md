@@ -1,5 +1,7 @@
 # Notchpop design
 
+On notched displays, only the black notch triggers the 350 ms hover dwell. The visible screen below it and the adjacent menu bar do not trigger the card, leaving other apps' controls accessible. Once open, the card stays available while the pointer interacts with it; notchless displays retain their top-center trigger. Returning during dismissal grace keeps the card open without another dwell. After Settings opens, leaving the trigger clears hover suppression without requiring exit from the hidden card's former area.
+
 Invitation cards show the current user's response as compact secondary text in the header: Accepted, Maybe, No response, or Delegated. Unknown responses and events organized by the user omit the label. Declined events remain excluded. The label is informational; responses are changed in Calendar.
 
 General includes “Upcoming meeting highlight,” enabled by default and persisted with AppStorage. Turning it off immediately hides the pre-meeting reminder without changing hover feedback or popup behavior.

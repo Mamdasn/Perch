@@ -49,9 +49,18 @@ final class NotchState: ObservableObject {
         CGFloat(min(1, max(0, elapsed / 0.35)))
     }
 
+    static func hoverRegion(for notch: NSRect, hasNotch: Bool) -> NSRect {
+        guard hasNotch else { return notch.insetBy(dx: -8, dy: -8) }
+        return notch
+    }
+
     func tick(now: Date, near: Bool, inside: Bool) {
         if near || (inside && mood == .open) {
             leftAt = nil
+            if mood == .open {
+                hoverProgress = 1
+                return
+            }
             if enteredAt == nil { enteredAt = now }
             let progress = Self.dwellProgress(elapsed: now.timeIntervalSince(enteredAt!))
             if hoverProgress != progress { hoverProgress = progress }
@@ -140,12 +149,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func update() {
         state.tickReminderPreview(at: Date())
         let mouse = NSEvent.mouseLocation
-        let near = notchRect.insetBy(dx: -8, dy: -8).contains(mouse)
+        let near = NotchState.hoverRegion(for: notchRect, hasNotch: state.hasNotch).contains(mouse)
         // Only the visible card receives clicks; the menu bar and transparent margins pass through.
         let cardRect = NSRect(x: notchRect.midX - 168, y: notchRect.minY - 252, width: 336, height: 252)
         let inside = cardRect.contains(mouse)
         if suppressHoverUntilExit {
-            if near || inside { return }
+            if near { return }
             suppressHoverUntilExit = false
         }
         let now = Date()
@@ -448,6 +457,40 @@ if CommandLine.arguments.contains("--self-test") {
         print("PASS: \(label)")
     }
     let model = NotchState()
+    let testNotch = NSRect(x: 600, y: 950, width: 190, height: 32)
+    let hoverRegion = NotchState.hoverRegion(for: testNotch, hasNotch: true)
+    check(!hoverRegion.contains(NSPoint(x: 695, y: 940)), "Hover below the notch leaves window controls accessible")
+    check(hoverRegion.contains(NSPoint(x: 695, y: 960)), "Hover inside the notch activates the popup")
+    check(!hoverRegion.contains(NSPoint(x: 599, y: 940)), "Hover beside the notch does not activate the popup")
+    check(!hoverRegion.contains(NSPoint(x: 695, y: 920)), "Hover farther below the notch does not activate the popup")
+    check(!hoverRegion.contains(NSPoint(x: 695, y: 910)), "Hover far below the notch does not activate the popup")
+    let returningHover = NotchState()
+    let hoverTime = Date()
+    let upwardHover = NotchState()
+    upwardHover.tick(now: hoverTime,
+                     near: hoverRegion.contains(NSPoint(x: 695, y: 940)), inside: false)
+    upwardHover.tick(now: hoverTime.addingTimeInterval(0.2),
+                     near: hoverRegion.contains(NSPoint(x: 695, y: 960)), inside: false)
+    upwardHover.tick(now: hoverTime.addingTimeInterval(0.4),
+                     near: hoverRegion.contains(NSPoint(x: 695, y: 975)), inside: false)
+    check(upwardHover.mood == .peek, "Dwell starts only after the pointer enters the notch")
+    upwardHover.tick(now: hoverTime.addingTimeInterval(0.6),
+                     near: hoverRegion.contains(NSPoint(x: 695, y: 975)), inside: false)
+    check(upwardHover.mood == .open, "Remaining inside the notch reveals the card")
+    returningHover.tick(now: hoverTime, near: true, inside: false)
+    returningHover.tick(now: hoverTime.addingTimeInterval(0.4), near: true, inside: false)
+    returningHover.tick(now: hoverTime.addingTimeInterval(0.5), near: false, inside: false)
+    returningHover.tick(now: hoverTime.addingTimeInterval(0.6), near: false, inside: true)
+    check(returningHover.mood == .open, "Returning during dismissal grace keeps the card open without another dwell")
+    for cycle in 0..<3 {
+        let start = hoverTime.addingTimeInterval(Double(cycle) * 2 + 2)
+        returningHover.tick(now: start, near: false, inside: false)
+        returningHover.tick(now: start.addingTimeInterval(0.3), near: false, inside: false)
+        check(returningHover.mood == .hidden, "Hover cycle \(cycle + 1) dismisses completely")
+        returningHover.tick(now: start.addingTimeInterval(0.5), near: true, inside: false)
+        returningHover.tick(now: start.addingTimeInterval(0.9), near: true, inside: false)
+        check(returningHover.mood == .open, "Hover cycle \(cycle + 1) reopens after dwell")
+    }
     check(Meeting.responseLabel(for: .accepted) == "Accepted", "Accepted invitation shows your response")
     check(Meeting.responseLabel(for: .tentative) == "Maybe", "Tentative invitation uses Calendar's Maybe label")
     check(Meeting.responseLabel(for: .pending) == "No response", "Unanswered invitation is identified")

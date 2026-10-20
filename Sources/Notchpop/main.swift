@@ -39,7 +39,7 @@ final class OverlayPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let state = NotchState()
     let meetings = MeetingStore()
     var panel: OverlayPanel!
@@ -101,7 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let inside = cardRect.contains(mouse)
         let wasOpen = state.mood == .open
         state.tick(now: Date(), near: near, inside: inside)
-        if state.mood == .open && !wasOpen {
+        if state.mood == .open && !wasOpen && settings?.isVisible != true {
             panel.makeKey()
         } else if state.mood != .open && wasOpen && panel.isKeyWindow {
             panel.resignKey()
@@ -115,15 +115,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func quit() { NSApp.terminate(nil) }
     @objc func showSettings() {
         if settings == nil {
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 440, height: 480), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-            window.title = "Notchpop"
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 460), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            window.title = "Notchpop Settings"
             window.isReleasedWhenClosed = false
+            window.hidesOnDeactivate = false
+            window.delegate = self
             window.contentView = NSHostingView(rootView: SettingsView(store: meetings, preview: { [weak self] in self?.demo() }))
             window.center()
             settings = window
         }
+        // Keep a normal application presence while permission dialogs are open.
+        NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         settings?.makeKeyAndOrderFront(nil)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow, window === settings else { return }
+        NSApp.setActivationPolicy(.accessory)
     }
 }
 
@@ -230,24 +239,68 @@ struct SettingsView: View {
     @ObservedObject var store: MeetingStore
     var preview: () -> Void
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Your day. At a glance.").font(.system(size: 23, weight: .semibold))
-            Text("Your current meeting comes first. Otherwise, Notchpop finds the next event in the coming 7 days.").foregroundStyle(.secondary)
-            LoginSettings()
-            Divider()
+        TabView {
+            calendarSettings
+                .tabItem { Label("Calendars", systemImage: "calendar") }
+            Form {
+                Section("Startup") {
+                    LoginSettings()
+                }
+                Section("Preview") {
+                    HStack {
+                        Text(store.isDemo ? "Demo meetings are showing" : "Try sample meetings")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        demoButton
+                    }
+                }
+            }
+            .formStyle(.grouped)
+            .tabItem { Label("General", systemImage: "gearshape") }
+        }
+        .padding(16)
+        .frame(width: 480, height: 460)
+    }
+
+    private var calendarSettings: some View {
+        VStack(alignment: .leading, spacing: 12) {
             if store.connected {
-                Text("Show events from").font(.headline)
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Your calendars").font(.headline)
+                        Text("Choose which calendars appear at the notch.")
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button { store.endDemo() } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .help("Refresh calendars").accessibilityLabel("Refresh calendars")
+                }
+                List {
                         ForEach(store.calendars) { calendar in
                             Toggle(calendar.title, isOn: Binding(get: { !store.excluded.contains(calendar.id) }, set: { store.setEnabled($0, id: calendar.id) }))
+                                .toggleStyle(.checkbox)
+                                .padding(.vertical, 4)
                         }
-                        if store.calendars.isEmpty { Text("Add an account in the macOS Calendar app, then refresh.").foregroundStyle(.secondary) }
-                    }.frame(maxWidth: .infinity, alignment: .leading)
+                        if store.calendars.isEmpty {
+                            Text("Add an account in Calendar, then refresh.")
+                                .foregroundStyle(.secondary).padding(.vertical, 12)
+                        }
                 }
-                Button("Refresh calendars") { store.endDemo() }
+                .listStyle(.inset)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                HStack {
+                    Text("All-day events are hidden.").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    if store.isDemo {
+                        Text("Demo mode").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
             } else {
+                Text("Connect your calendar").font(.title2.weight(.semibold))
                 Text(store.needsSettings ? "Enable full Calendar access for Notchpop in System Settings, then click Refresh." : "Connect the calendars already synced to this Mac, including Google and Outlook accounts.")
+                    .foregroundStyle(.secondary)
                 if store.needsSettings {
                     HStack { Button("Open System Settings") { store.openPrivacySettings() }; Button("Refresh") { store.refresh() } }
                 } else {
@@ -257,15 +310,14 @@ struct SettingsView: View {
                 Text("macOS calls this Full Access. Notchpop only reads events; it does not edit them or upload them.").font(.caption).foregroundStyle(.secondary)
                 Spacer()
             }
-            HStack {
-                Button(store.isDemo ? "Use my calendar" : "Load demo meeting") {
-                    if store.isDemo { store.endDemo() } else { preview() }
-                }
-                .help(store.isDemo ? "Return to your calendar events." : "Then hover over the notch to preview.")
-                Spacer()
-                Text("All-day events stay out of the way.").font(.caption).foregroundStyle(.secondary)
-            }
-        }.padding(28).frame(width: 440, height: 480)
+        }.padding(20)
+    }
+
+    private var demoButton: some View {
+        Button(store.isDemo ? "Use my calendar" : "Load demo meeting") {
+            if store.isDemo { store.endDemo() } else { preview() }
+        }
+        .help(store.isDemo ? "Return to your calendar events." : "Then hover over the notch to preview.")
     }
 }
 

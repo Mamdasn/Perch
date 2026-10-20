@@ -1,5 +1,7 @@
 # Notchpop design
 
+Settings uses a 480 × 460 pt native tabbed window. Calendars contains a scrollable checkbox list and a refresh action; General groups startup and the in-place demo toggle. Connected users see calendar controls rather than onboarding copy.
+
 Launch at login is an opt-in setting backed by `SMAppService.mainApp` in `LoginSettings.swift`. It reflects macOS registration status, offers a System Settings link when approval is needed, and surfaces registration errors. No helper or LaunchAgent is required. Actual login after a restart remains a manual validation step.
 
 SwiftUI handles content and native material; AppKit handles the nonactivating overlay and menu bar. The panel becomes key when the popup opens to receive arrow keys, and relinquishes key status when dismissed. Keyboard handling is local to the panel; modified arrow shortcuts pass through.

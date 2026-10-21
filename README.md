@@ -17,7 +17,7 @@ The release is not notarized by Apple. If macOS blocks it, use **System Settings
 ## Use
 
 - **Browse events:** scroll up for later events or down for earlier ones. The arrow keys work too while the card is open and notes are collapsed.
-- **Open or join:** click the event title to open it in Calendar, or click **Join** to open its meeting link.
+- **Open or join:** click the event title to open it in Calendar, or click **Join** to open its meeting link. If there are multiple meeting links, choose the service from the menu.
 - **See the details:** organizer, location, participant count, and your invitation response appear when available. Expand **Notes** to read the agenda; scrolling inside that area scrolls the text.
 - **Get a quiet reminder:** a blue-to-green highlight appears during the five minutes before a meeting, unless another meeting is in progress. Toggle **Upcoming meeting highlight** in **Settings → General**.
 - **Try a preview:** click **Load Demo Meeting** in **Settings → Calendars**. Your calendar returns when the preview closes.

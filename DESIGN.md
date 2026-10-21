@@ -6,6 +6,8 @@ On notched displays, only the black notch triggers the 350 ms hover dwell. The v
 
 Invitation cards show the current user's response as compact secondary text in the header: Accepted, Maybe, No response, or Delegated. Unknown responses and events organized by the user omit the label. Declined events remain excluded. The label is informational; responses are changed in Calendar.
 
+Join opens a single meeting link directly. Multiple recognized HTTPS conference links produce a native menu labeled by service, with numbered entries when a service has more than one link and an Open in Calendar action when available. Duplicate URLs are removed across the event URL, location, and notes. The card stays open while the menu is tracking, so moving into the menu does not dismiss it.
+
 General includes “Upcoming meeting highlight,” enabled by default and persisted with AppStorage. Turning it off immediately hides the pre-meeting reminder without changing hover feedback or popup behavior.
 
 Connected users can choose “Disconnect Calendar” in General. This clears loaded events and persists an app-level disconnect across launches while retaining calendar selections and macOS permission. Calendars returns to the connection flow; reconnecting resumes event loading.

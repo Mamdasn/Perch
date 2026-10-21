@@ -8,7 +8,7 @@ struct Meeting: Identifiable, Equatable {
     let start: Date
     let end: Date
     let calendar: String
-    var joinURL: URL? = nil
+    var joinURLs: [URL] = []
     var calendarItemIdentifier: String? = nil
     var organizerName: String? = nil
     var organizerEmail: String? = nil
@@ -59,11 +59,31 @@ struct Meeting: Identifiable, Equatable {
 
     // Only recognized HTTPS conference links become Join buttons, never arbitrary event URLs.
     static func conferenceURL(in text: String) -> URL? {
-        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return nil }
-        return detector.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap(\.url).first { url in
-            guard url.scheme?.lowercased() == "https", let host = url.host?.lowercased() else { return false }
-            return ["meet.google.com", "zoom.us", "teams.microsoft.com", "teams.live.com", "webex.com"].contains { host == $0 || host.hasSuffix("." + $0) }
+        conferenceURLs(in: text).first
+    }
+
+    static func conferenceProvider(for url: URL) -> String? {
+        guard url.scheme?.lowercased() == "https", let host = url.host?.lowercased() else { return nil }
+        let providers = [("meet.google.com", "Google Meet"), ("zoom.us", "Zoom"),
+                         ("teams.microsoft.com", "Microsoft Teams"), ("teams.live.com", "Microsoft Teams"),
+                         ("teams.cloud.microsoft", "Microsoft Teams"),
+                         ("webex.com", "Webex")]
+        return providers.first { host == $0.0 || host.hasSuffix("." + $0.0) }?.1
+    }
+
+    static func conferenceURLs(in text: String) -> [URL] {
+        guard let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return [] }
+        var seen = Set<URL>()
+        return detector.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap(\.url).filter {
+            conferenceProvider(for: $0) != nil && seen.insert($0).inserted
         }
+    }
+
+    func joinLabel(for url: URL) -> String {
+        let provider = Self.conferenceProvider(for: url) ?? "Meeting link"
+        let matches = joinURLs.filter { Self.conferenceProvider(for: $0) == provider }
+        guard matches.count > 1, let index = matches.firstIndex(of: url) else { return provider }
+        return "\(provider) \(index + 1)"
     }
 }
 
@@ -168,7 +188,7 @@ final class MeetingStore: ObservableObject {
             return Meeting(id: "\(event.calendarItemIdentifier)-\(event.startDate.timeIntervalSince1970)",
                            title: event.title?.isEmpty == false ? event.title : "Untitled meeting",
                            start: event.startDate, end: event.endDate, calendar: event.calendar.title,
-                           joinURL: Meeting.conferenceURL(in: links), calendarItemIdentifier: event.calendarItemIdentifier,
+                           joinURLs: Meeting.conferenceURLs(in: links), calendarItemIdentifier: event.calendarItemIdentifier,
                            organizerName: event.organizer?.name,
                            organizerEmail: event.organizer.flatMap { participant in
                                participant.url.scheme?.lowercased() == "mailto"
@@ -329,7 +349,24 @@ struct MeetingCard: View {
                     }
                     }
                     Spacer(minLength: 8)
-                    if let url = meeting.joinURL {
+                    if meeting.joinURLs.count > 1 {
+                        Menu {
+                            ForEach(meeting.joinURLs, id: \.self) { url in
+                                Button(meeting.joinLabel(for: url)) { NSWorkspace.shared.open(url) }
+                                    .help(url.absoluteString)
+                            }
+                            if meeting.calendarURL != nil {
+                                Divider()
+                                Button("Open in Calendar") { store.openInCalendar(meeting) }
+                            }
+                        } label: {
+                            Text("Join")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .menuStyle(.borderedButton).controlSize(.regular).fixedSize()
+                        .help("Choose a meeting link")
+                        .accessibilityLabel("Choose a meeting link")
+                    } else if let url = meeting.joinURLs.first {
                         Button { NSWorkspace.shared.open(url) } label: { Label("Join", systemImage: "arrow.up.right") }
                             .buttonStyle(.borderedProminent).tint(.white).foregroundStyle(.black).controlSize(.regular)
                     } else {

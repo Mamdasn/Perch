@@ -96,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var previewUntil: Date?
     private var temporaryPreview = false
     private var suppressHoverUntilExit = false
+    private var trackingMenus = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -120,6 +121,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             menu.addItem(item)
         }
         statusItem.menu = menu
+        NotificationCenter.default.addObserver(self, selector: #selector(menuTrackingStarted), name: NSMenu.didBeginTrackingNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(menuTrackingEnded), name: NSMenu.didEndTrackingNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(positionPanel), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         pulse = Timer(timeInterval: 1.0 / 30, repeats: true) { [weak self] _ in self?.update() }
         RunLoop.main.add(pulse!, forMode: .common)
@@ -163,7 +166,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let now = Date()
         if inside { previewUntil = nil }
         let wasOpen = state.mood == .open
-        state.tick(now: now, near: near || (previewUntil.map { now < $0 } ?? false), inside: inside)
+        state.tick(now: now, near: near || (previewUntil.map { now < $0 } ?? false),
+                   inside: inside || (trackingMenus > 0 && state.mood == .open))
         if state.mood == .open && !wasOpen && settings?.isVisible != true {
             panel.makeKey()
         } else if state.mood != .open && wasOpen && panel.isKeyWindow {
@@ -179,6 +183,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func demoCurrent() { meetings.demo(current: true) }
+    @objc private func menuTrackingStarted(_ notification: Notification) { trackingMenus += 1 }
+    @objc private func menuTrackingEnded(_ notification: Notification) { trackingMenus = max(0, trackingMenus - 1) }
     func previewMeeting() {
         suppressHoverUntilExit = false
         meetings.demo(current: false)
@@ -612,6 +618,17 @@ if CommandLine.arguments.contains("--self-test") {
     check(Meeting.conferenceURL(in: "Meet: https://meet.google.com/abc-defg-hij")?.host == "meet.google.com", "Conference URL is extracted")
     check(Meeting.conferenceURL(in: "https://zoom.us.evil.example/j/123") == nil, "Lookalike hosts do not become Join buttons")
     check(Meeting.conferenceURL(in: "file:///tmp/test") == nil, "Non-HTTPS links are excluded")
+    let conferenceLinks = Meeting.conferenceURLs(in: "https://meet.google.com/abc-defg-hij\nhttps://teams.microsoft.com/l/meetup-join/123\nhttps://meet.google.com/abc-defg-hij\nhttps://zoom.us.evil.example/j/123\nhttps://example.com/agenda")
+    check(conferenceLinks.count == 2 && conferenceLinks.map { Meeting.conferenceProvider(for: $0) } == ["Google Meet", "Microsoft Teams"],
+          "All supported meeting links are kept in order without duplicates or unrelated links")
+    var multipleLinks = current
+    multipleLinks.joinURLs = Meeting.conferenceURLs(in: "https://zoom.us/j/123?pwd=one https://zoom.us/j/456?pwd=two")
+    check(multipleLinks.joinURLs.count == 2 && multipleLinks.joinLabel(for: multipleLinks.joinURLs[1]) == "Zoom 2",
+          "Different links for the same provider have distinct menu labels")
+    check(multipleLinks.joinURLs.first?.query == "pwd=one", "Meeting link credentials and parameters are preserved")
+    check(Meeting.conferenceURL(in: "https://teams.cloud.microsoft/meet/123") != nil &&
+          Meeting.conferenceURL(in: "https://teams.cloud.microsoft.evil.example/meet/123") == nil,
+          "Teams cloud links are supported without accepting lookalike domains")
     let linked = Meeting(id: "local", title: "Test", start: Date(timeIntervalSince1970: 0), end: now, calendar: "Test", calendarItemIdentifier: "event/id?#")
     check(linked.calendarURL?.absoluteString == "ical://ekevent/19700101T000000Z/event%2Fid%3F%23?method=show&options=more", "Event link uses UTC occurrence date and safely encoded identifier")
     check(current.calendarURL == nil, "Demo events do not link to unrelated Calendar events")

@@ -1,44 +1,38 @@
 # Notchpop
 
-A quiet macOS notch companion. Hover to reveal your current or next meeting with a subtle fluid highlight. When no meeting is in progress, the final five minutes before the next meeting bring a thin blue-to-green highlight around the notch—or a small top-center line on displays without a notch. It disappears when the meeting starts.
+Your next meeting, tucked behind the notch. Hover inside the notch to reveal your current or upcoming event; move away and the card slides out of view.
 
-- Scroll up or press **↑** for later events; scroll down or press **↓** for earlier ones while the popup is open.
-- Toggle **Upcoming meeting highlight** under **Settings → General** to enable or disable the five-minute reminder. Your choice is saved.
-- **Disconnect Calendar** under **Settings → General** stops loading events until you reconnect in Calendars, including after restarting the app. It does not revoke macOS Calendar permission.
-- While that setting is off, rest your pointer over it to preview the blue-to-green transition in five seconds. It loops while hovered and finishes the current cycle when you move away.
-- Click an event title to open it in Calendar, or **Join** to open its meeting link.
-- Organizer names and initials appear on the event card when available.
-- Location and invited participant count appear when available. Expand **Notes** to read the agenda; scroll inside notes to read longer descriptions.
-- Invitations show your response beside the card's status. Change your response in Calendar; declined events remain hidden.
-- Hover inside the black notch to open the card; hovering below it leaves other apps' controls accessible.
-- Click **Load Demo Meeting** under **Settings → Calendars** to show a sample immediately. Move your pointer onto the card to explore it. Your calendar returns automatically when the preview closes.
+Works with calendars synced to the macOS Calendar app, including Google and Outlook accounts. Requires **macOS 14 Sonoma or later** on Apple Silicon or Intel. No notch? Use the top center of your display.
 
-## Requirements
+## Install
 
-- macOS 14 Sonoma or later.
-- Apple Silicon or Intel Mac; builds for the Mac you run the build on.
-- A notch is optional: other displays use the top center.
-- Calendars synced to the macOS Calendar app.
-
-## Download and install
-
-1. Download the **Notchpop universal ZIP** from the [latest release](https://github.com/Mamdasn/Notchpop/releases/latest).
+1. Download the **universal ZIP** from the [latest release](https://github.com/Mamdasn/Notchpop/releases/latest).
 2. Unzip it and move **Notchpop.app** to **Applications**.
-3. Open Notchpop, then choose **Settings → Calendars → Connect Calendar** from its menu-bar icon.
+3. Open Notchpop. From its menu-bar icon, choose **Settings → Calendars → Connect Calendar** and allow calendar access.
 
-The download supports Apple Silicon and Intel Macs running macOS 14 or later. No build tools are needed.
+No build tools are needed. Enable **Launch at login** in **Settings → General** to start Notchpop automatically after restarting your Mac.
 
-This release is locally signed, not notarized by Apple. If macOS blocks it, and you trust this download, open **System Settings → Privacy & Security → Open Anyway** after attempting to launch it. See [Apple's instructions](https://support.apple.com/102445).
+The release is not notarized by Apple. If macOS blocks it, use **System Settings → Privacy & Security → Open Anyway** only if you trust the download. See [Apple’s guidance](https://support.apple.com/102445).
 
-## Build from source
+## Use
 
-Install Apple's Command Line Tools if needed:
+- **Browse events:** scroll up for later events or down for earlier ones. The arrow keys work too while the card is open and notes are collapsed.
+- **Open or join:** click the event title to open it in Calendar, or click **Join** to open its meeting link.
+- **See the details:** organizer, location, participant count, and your invitation response appear when available. Expand **Notes** to read the agenda; scrolling inside that area scrolls the text.
+- **Get a quiet reminder:** a blue-to-green highlight appears during the five minutes before a meeting, unless another meeting is in progress. Toggle **Upcoming meeting highlight** in **Settings → General**.
+- **Try a preview:** click **Load Demo Meeting** in **Settings → Calendars**. Your calendar returns when the preview closes.
+
+Notchpop reads events locally; it never edits or uploads them. All-day and declined events stay hidden. Choose which calendars to show in Settings, or use **Disconnect Calendar** in General to stop loading events.
+
+## Build and install from source
+
+Install Apple’s Command Line Tools if needed:
 
 ```sh
 xcode-select --install
 ```
 
-After the tools finish installing, run:
+Then run:
 
 ```sh
 git clone https://github.com/Mamdasn/Notchpop.git
@@ -46,29 +40,17 @@ cd Notchpop
 bash build-app.sh
 ```
 
-The script builds and signs the app, quits any running Notchpop, installs it in `/Applications`, and launches it. Run `bash build-app.sh` again after changing the code. Installation requires write access to `/Applications`.
+The script builds for your Mac, replaces any existing installation in `/Applications`, and opens Notchpop. It requires write access to `/Applications`. Run it again to install source updates.
 
-Open **Settings** from the menu-bar icon, click **Connect Calendar**, and grant access. Then hover over the notch. Notchpop reads events locally; it never edits or uploads them.
-
-The build is locally signed, not notarized. Calendar event deep links and multi-display/full-screen behavior may vary across macOS versions.
-
-Calendar access should survive quitting and reopening the same build. The default ad-hoc signature changes when the executable changes, so installing a rebuilt app can require granting access again. Calendar selections are saved separately. To keep a consistent identity across builds, use the same installed signing certificate:
-
-```sh
-SIGNING_IDENTITY="Apple Development: Your Name (TEAMID)" bash build-app.sh
-```
-
-Switching signing identities may require granting access once more. See [Apple's code-signing requirements](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements).
-
-## After restarting your Mac
-
-Enable **Launch at login** in Notchpop's menu-bar **Settings** to open it automatically when you sign in. If approval is required, click **Open Login Items Settings**. You do not need to reinstall or rebuild after restarting. Turn the toggle off to disable automatic launch. To uninstall, disable it, quit Notchpop, and move `/Applications/Notchpop.app` to Trash.
-
-## Checks
+To run the checks after building:
 
 ```sh
 .build/release/Notchpop --self-test
 ```
+
+## Uninstall
+
+Turn off **Launch at login**, quit Notchpop from its menu-bar menu, and move **Notchpop.app** from Applications to Trash.
 
 ## License
 

@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 enum Mood { case hidden, peek, open }
@@ -60,7 +61,7 @@ final class NotchState: ObservableObject {
         if near || (inside && mood == .open) {
             leftAt = nil
             if mood == .open {
-                hoverProgress = 1
+                if hoverProgress != 1 { hoverProgress = 1 }
                 return
             }
             if enteredAt == nil { enteredAt = now }
@@ -168,7 +169,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         } else if state.mood != .open && wasOpen && panel.isKeyWindow {
             panel.resignKey()
         }
-        panel.ignoresMouseEvents = !(inside && state.mood == .open)
+        let ignoresMouse = !(inside && state.mood == .open)
+        if panel.ignoresMouseEvents != ignoresMouse { panel.ignoresMouseEvents = ignoresMouse }
         if temporaryPreview && state.mood == .hidden {
             temporaryPreview = false
             previewUntil = nil
@@ -252,7 +254,9 @@ struct NotchView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            if state.mood == .open {
+            // Lay out the card and create its blur surface during the hover dwell,
+            // before the visible rollout begins. Keep their identity on opening.
+            if state.mood != .hidden {
                 TimelineView(.periodic(from: .now, by: 1)) { timeline in
                     MeetingPager(store: meetings, now: timeline.date, openSettings: openSettings, notesExpanded: $state.notesExpanded)
                 }
@@ -273,7 +277,10 @@ struct NotchView: View {
                 .overlay { MilkRim(progress: reduceMotion ? 1 : milkProgress, reveal: reduceMotion ? 1 : liquidProgress, reducedTransparency: reduceTransparency) }
                 .shadow(color: .black.opacity(0.28), radius: 18, y: 10)
                 // Clip at the screen edge, not at the card's resting position.
-                .offset(y: state.topInset + 18 - (reduceMotion ? 0 : (state.topInset + state.cardHeight + 58) * (1 - liquidProgress)))
+                .offset(y: state.topInset + 18 - (reduceMotion ? 0 : (state.topInset + state.cardHeight + 58) * (1 - (state.mood == .peek ? 0 : liquidProgress))))
+                .opacity(reduceMotion && state.mood == .peek ? 0 : 1)
+                .allowsHitTesting(state.mood == .open)
+                .accessibilityHidden(state.mood != .open)
                 .transition(reduceMotion ? .opacity : .asymmetric(insertion: .identity, removal: .offset(y: -(state.topInset + state.cardHeight + 58))))
             }
         }
@@ -510,6 +517,14 @@ if CommandLine.arguments.contains("--self-test") {
     returningHover.tick(now: hoverTime.addingTimeInterval(0.5), near: false, inside: false)
     returningHover.tick(now: hoverTime.addingTimeInterval(0.6), near: false, inside: true)
     check(returningHover.mood == .open, "Returning during dismissal grace keeps the card open without another dwell")
+    var steadyHoverUpdates = 0
+    let hoverSubscription = returningHover.objectWillChange.sink { steadyHoverUpdates += 1 }
+    for frame in 0..<30 {
+        returningHover.tick(now: hoverTime.addingTimeInterval(0.7 + Double(frame) / 30), near: true, inside: true)
+    }
+    print("Steady hover updates per second: \(steadyHoverUpdates)")
+    check(steadyHoverUpdates == 0, "Holding the pointer over an open card does not trigger redundant redraws")
+    hoverSubscription.cancel()
     for cycle in 0..<3 {
         let start = hoverTime.addingTimeInterval(Double(cycle) * 2 + 2)
         returningHover.tick(now: start, near: false, inside: false)

@@ -495,6 +495,15 @@ if CommandLine.arguments.contains("--self-test") {
     let model = NotchState()
     check(Meeting.nonempty(" \n ") == nil, "Blank event details leave no empty rows")
     check(Meeting.nonempty(" Room 2\n") == "Room 2", "Event details trim surrounding whitespace")
+    check(MeetingNotes.cleaned(" \r\nAgenda  \r\n\r\n\r\n  Keep this indentation\r\n") == "Agenda\n\n  Keep this indentation",
+          "Notes normalize whitespace while retaining paragraphs and indentation")
+    check(MeetingNotes.cleaned("<div>Agenda &amp; decisions</div><ul><li>Review</li><li>Plan &#x2713;</li></ul>") == "Agenda & decisions\n\n• Review\n\n• Plan ✓",
+          "HTML notes become readable text with bullets and decoded characters")
+    check(MeetingNotes.cleaned("<p><a href=\"https://example.com/agenda?a=1&amp;b=2\">Agenda</a></p>") == "Agenda (https://example.com/agenda?a=1&b=2)",
+          "Cleaning HTML notes preserves hidden link destinations and query parameters")
+    check(MeetingNotes.cleaned("Contact <alex@example.com> when x < 5.\nhttps://example.com/?a=1&b=2") == "Contact <alex@example.com> when x < 5.\nhttps://example.com/?a=1&b=2",
+          "Plain notes retain email addresses, comparisons, and URLs")
+    check(MeetingNotes.cleaned("<div>&nbsp;<br></div>") == nil, "Empty HTML notes do not show a disclosure")
     model.notesExpanded = true
     check(model.cardHeight > 286 && model.cardHeight + model.topInset + 18 < 480, "Expanded notes fit the overlay and hover area")
     model.notesExpanded = false

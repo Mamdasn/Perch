@@ -200,7 +200,7 @@ final class MeetingStore: ObservableObject {
                            participantCount: (event.attendees ?? []).filter {
                                $0.participantType != .room && $0.participantType != .resource
                            }.count,
-                           notes: Meeting.nonempty(event.notes))
+                           notes: MeetingNotes.cleaned(event.notes))
         }
     }
 
@@ -318,24 +318,18 @@ struct MeetingCard: View {
                 }
                 if let notes = meeting.notes {
                     DisclosureGroup(isExpanded: $notesExpanded) {
-                        ScrollView {
-                            Text(notes)
-                                .font(.system(size: 12))
-                                .textSelection(.enabled)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.vertical, 6)
-                        }
+                        NotesTextView(text: notes)
                         .frame(height: 104)
-                        .background {
-                            GeometryReader { geometry in
-                                Color.clear.preference(key: NotesScrollBoundsKey.self,
-                                                       value: geometry.frame(in: .named("meetingPager")))
-                            }
-                        }
                     } label: {
                         Text("Notes").font(.system(size: 11, weight: .medium))
                     }
-                    .tint(.secondary)
+                    .disclosureGroupStyle(NotesDisclosureStyle())
+                    .background {
+                        GeometryReader { geometry in
+                            Color.clear.preference(key: NotesScrollBoundsKey.self,
+                                                   value: geometry.frame(in: .named("meetingPager")))
+                        }
+                    }
                     .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: notesExpanded)
                     .padding(.bottom, 6)
                 }

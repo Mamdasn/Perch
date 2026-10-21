@@ -96,12 +96,20 @@ struct ScrollCapture: NSViewRepresentable {
                 guard let self, event.window === self.window else { return event }
                 if self.notesExpanded {
                     if event.type == .keyDown { return event }
-                    // SwiftUI may host scrolling without an enclosing NSScrollView.
-                    // Use the visible viewport, including padding and its scrollbar.
+                    // The whole disclosure, including its label and empty space,
+                    // belongs to notes scrolling while expanded.
                     if self.notesBounds.contains(self.convert(event.locationInWindow, from: nil)) {
                         self.amount = 0
                         self.fired = false
                         self.lastTime = event.timestamp
+                        if let content = self.window?.contentView,
+                           let notes = NotesScrollView.find(in: content) {
+                            let point = notes.convert(event.locationInWindow, from: nil)
+                            // Let the native scroller handle its own events normally.
+                            if notes.bounds.contains(point) { return event }
+                            notes.scrollWheel(with: event)
+                            return nil
+                        }
                         return event
                     }
                 }

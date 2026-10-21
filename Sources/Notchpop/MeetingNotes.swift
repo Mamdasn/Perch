@@ -35,11 +35,20 @@ enum MeetingNotes {
             .replacingOccurrences(of: "\u{00a0}", with: " ")
         var lines: [String] = []
         for line in text.components(separatedBy: "\n") {
-            let trimmed = line.replacingOccurrences(of: "[ \\t]+$", with: "", options: .regularExpression)
+            // Leave a paragraph break where an invitation used a decorative rule.
+            let trimmed = isSeparator(line) ? "" : line.replacingOccurrences(of: "[ \\t]+$", with: "", options: .regularExpression)
             if trimmed.isEmpty && (lines.isEmpty || lines.last == "") { continue }
             lines.append(trimmed)
         }
         return Meeting.nonempty(lines.joined(separator: "\n"))
+    }
+
+    private static func isSeparator(_ line: String) -> Bool {
+        let symbols = line.unicodeScalars.filter { !CharacterSet.whitespaces.contains($0) }
+        // Restrict this to long lines of familiar divider characters. Keep short
+        // punctuation, emoji, and anything containing words, numbers, or URLs.
+        let dividers = CharacterSet(charactersIn: "-_=~.:*+|•·–—─━┄┅┈┉═")
+        return symbols.count >= 8 && symbols.allSatisfy { dividers.contains($0) }
     }
 
     private static func decoded(_ text: String) -> String {

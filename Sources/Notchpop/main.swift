@@ -504,6 +504,16 @@ if CommandLine.arguments.contains("--self-test") {
     check(MeetingNotes.cleaned("Contact <alex@example.com> when x < 5.\nhttps://example.com/?a=1&b=2") == "Contact <alex@example.com> when x < 5.\nhttps://example.com/?a=1&b=2",
           "Plain notes retain email addresses, comparisons, and URLs")
     check(MeetingNotes.cleaned("<div>&nbsp;<br></div>") == nil, "Empty HTML notes do not show a disclosure")
+    let decoratedNotes = "Agenda\n-::~:~::~:~::~:~::~:~::-\nhttps://meet.google.com/abc-defg-hij\n________________\nDiscuss next steps."
+    check(MeetingNotes.cleaned(decoratedNotes) == "Agenda\n\nhttps://meet.google.com/abc-defg-hij\n\nDiscuss next steps.",
+          "Decorative invitation separators are removed while content and links stay intact")
+    check(MeetingNotes.cleaned("  ━━━━━━━━  \n........\n= = = = = = = =") == nil,
+          "Notes containing only long divider lines are hidden")
+    let meaningfulNotes = "...\n*** Important ***\n• Review the agenda\nx + y = 10\nhttps://example.com/a___b?q=---&value=~~~\n✓✓✓✓✓✓✓✓"
+    check(MeetingNotes.cleaned(meaningfulNotes) == meaningfulNotes,
+          "Short punctuation, decorated text, bullets, equations, URLs, and symbols remain unchanged")
+    check(MeetingNotes.cleaned("<p>Agenda</p><p>__________</p><p><a href=\"https://example.com/notes\">Read notes</a></p>") == "Agenda\n\nRead notes (https://example.com/notes)",
+          "Separator cleanup also preserves links in HTML notes")
     model.notesExpanded = true
     check(model.cardHeight > 286 && model.cardHeight + model.topInset + 18 < 480, "Expanded notes fit the overlay and hover area")
     model.notesExpanded = false

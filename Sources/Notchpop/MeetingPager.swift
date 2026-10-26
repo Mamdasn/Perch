@@ -45,10 +45,10 @@ struct MeetingPager: View {
                 HStack(spacing: 10) {
                     Text("\(index + 1) of \(events.count)").monospacedDigit()
                     Spacer()
-                    Button { move(-1) } label: { Image(systemName: "chevron.down").frame(width: 24, height: 20) }
-                        .disabled(index == 0).help("Previous event · scroll down or ↓").accessibilityLabel("Previous event")
-                    Button { move(1) } label: { Image(systemName: "chevron.up").frame(width: 24, height: 20) }
-                        .disabled(index == events.count - 1).help("Next event · scroll up or ↑").accessibilityLabel("Next event")
+                    Button { move(-1) } label: { Image(systemName: "chevron.up").frame(width: 24, height: 20) }
+                        .disabled(index == 0).help("Previous event · scroll up or ↑").accessibilityLabel("Previous event")
+                    Button { move(1) } label: { Image(systemName: "chevron.down").frame(width: 24, height: 20) }
+                        .disabled(index == events.count - 1).help("Next event · scroll down or ↓").accessibilityLabel("Next event")
                 }.buttonStyle(.plain).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
             }
         }
@@ -117,7 +117,7 @@ struct ScrollCapture: NSViewRepresentable {
                     guard self.window?.isKeyWindow == true,
                           event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty,
                           event.keyCode == 126 || event.keyCode == 125 else { return event }
-                    self.onStep(event.keyCode == 126 ? 1 : -1)
+                    self.onStep(event.keyCode == 126 ? -1 : 1)
                     return nil
                 }
                 guard
@@ -132,14 +132,14 @@ struct ScrollCapture: NSViewRepresentable {
                 if !event.hasPreciseScrollingDeltas {
                     if event.timestamp - self.lastFire > 0.25 && delta != 0 {
                         self.lastFire = event.timestamp
-                        self.onStep(delta > 0 ? 1 : -1)
+                        self.onStep(delta > 0 ? -1 : 1)
                     }
                 } else if !self.fired {
                     if self.amount * delta < 0 { self.amount = 0 }
                     self.amount += delta
                     if abs(self.amount) >= 18 {
                         self.fired = true
-                        self.onStep(self.amount > 0 ? 1 : -1)
+                        self.onStep(self.amount > 0 ? -1 : 1)
                     }
                 }
                 return nil

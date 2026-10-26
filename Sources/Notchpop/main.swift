@@ -659,8 +659,8 @@ if CommandLine.arguments.contains("--self-test") {
     hover.tick(now: now.addingTimeInterval(0.2), near: false, inside: false)
     check(hover.mood == .hidden && hover.hoverProgress == 0, "Leaving during dwell removes the highlight immediately")
     check(MeetingNavigation.ordered([next, current]).map(\.id) == ["current", "next"], "Browsing orders meetings chronologically")
-    check(MeetingNavigation.target(index: 0, step: 1, count: 2) == 1, "Scroll up selects the next meeting")
-    check(MeetingNavigation.target(index: 1, step: -1, count: 2) == 0, "Scroll down selects the previous meeting")
+    check(MeetingNavigation.target(index: 1, step: -1, count: 2) == 0, "Scroll up or arrow up selects the previous meeting")
+    check(MeetingNavigation.target(index: 0, step: 1, count: 2) == 1, "Scroll down or arrow down selects the next meeting")
     check(MeetingNavigation.target(index: 0, step: -1, count: 2) == nil && MeetingNavigation.target(index: 1, step: 1, count: 2) == nil, "Browsing stops at either end without wrapping")
     exit(0)
 }

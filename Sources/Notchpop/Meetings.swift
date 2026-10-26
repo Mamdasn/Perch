@@ -48,6 +48,21 @@ struct Meeting: Identifiable, Equatable {
     }
 
     func isCurrent(at now: Date) -> Bool { start <= now && now < end }
+    func statusLabel(at now: Date, calendar: Calendar = .current) -> String {
+        if isCurrent(at: now) { return "In progress" }
+        if end <= now { return "Earlier" }
+        if calendar.isDate(start, inSameDayAs: now) { return "Up next" }
+        if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now),
+           calendar.isDate(start, inSameDayAs: tomorrow) { return "Tomorrow" }
+        if calendar.isDate(start, equalTo: now, toGranularity: .weekOfYear) {
+            return "This week"
+        }
+        if let nextWeek = calendar.date(byAdding: .weekOfYear, value: 1, to: now),
+           calendar.isDate(start, equalTo: nextWeek, toGranularity: .weekOfYear) {
+            return "Next week"
+        }
+        return "Upcoming"
+    }
     func progress(at now: Date) -> Double {
         min(1, max(0, now.timeIntervalSince(start) / max(1, end.timeIntervalSince(start))))
     }
@@ -253,13 +268,14 @@ struct MeetingCard: View {
     var displayedMeeting: Meeting? = nil
     @Binding var notesExpanded: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.calendar) private var calendar
     private var meeting: Meeting? { displayedMeeting ?? Meeting.featured(in: store.meetings, at: now) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 7) {
                 Circle().fill(meeting?.isCurrent(at: now) == true ? Color.green : Color.secondary).frame(width: 5, height: 5)
-                Text(meeting?.isCurrent(at: now) == true ? "In progress" : ((meeting?.end ?? .distantFuture) <= now ? "Earlier" : "Up next"))
+                Text(meeting?.statusLabel(at: now, calendar: calendar) ?? "Up next")
                     .font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
                 if store.isDemo { Text("DEMO").font(.system(size: 8, weight: .semibold)).foregroundStyle(.secondary).padding(4).background(.white.opacity(0.08), in: Capsule()) }
                 Spacer()

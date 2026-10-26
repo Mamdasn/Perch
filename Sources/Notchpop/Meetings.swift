@@ -50,7 +50,13 @@ struct Meeting: Identifiable, Equatable {
     func isCurrent(at now: Date) -> Bool { start <= now && now < end }
     func statusLabel(at now: Date, calendar: Calendar = .current) -> String {
         if isCurrent(at: now) { return "In progress" }
-        if end <= now { return "Earlier" }
+        if end <= now {
+            let daysAgo = calendar.dateComponents([.day], from: calendar.startOfDay(for: start),
+                                                  to: calendar.startOfDay(for: now)).day ?? 0
+            if daysAgo == 1 { return "Yesterday" }
+            if daysAgo > 1 { return "\(daysAgo)d ago" }
+            return "Earlier"
+        }
         if calendar.isDate(start, inSameDayAs: now) { return "Up next" }
         if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now),
            calendar.isDate(start, inSameDayAs: tomorrow) { return "Tomorrow" }

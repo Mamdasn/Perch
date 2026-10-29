@@ -381,7 +381,7 @@ struct SettingsView: View {
                     LoginSettings()
                 }
                 Section {
-                    Toggle("Upcoming meeting highlight", isOn: $upcomingMeetingHighlight)
+                    Toggle("Meeting highlight", isOn: $upcomingMeetingHighlight)
                         .onContinuousHover { phase in
                             switch phase {
                             case .active:
@@ -399,7 +399,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Meetings")
                 } footer: {
-                    Text("Show a subtle highlight during the five minutes before a meeting.")
+                    Text("Show a subtle highlight during the five minutes before a meeting, and keep it green while the meeting is in progress.")
                 }
                 if store.connected {
                     Section("Calendar") {
@@ -624,10 +624,19 @@ if CommandLine.arguments.contains("--self-test") {
     let next = Meeting(id: "next", title: "Next", start: now.addingTimeInterval(300), end: now.addingTimeInterval(600), calendar: "Test")
     check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(-1)) == nil, "Reminder stays hidden before five minutes")
     check(MeetingReminder.progress(in: [next], at: now) == 0, "Reminder starts blue at five minutes")
-    check(MeetingReminder.progress(in: [next, current], at: now) == nil, "Ongoing meetings suppress upcoming reminders")
+    check(MeetingReminder.progress(in: [current], at: now) == 1, "Ongoing meetings keep the highlight green")
+    check(MeetingReminder.progress(in: [next, current], at: now) == 1, "Ongoing meetings take priority over upcoming reminders")
     check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(150)) == 0.5, "Reminder color follows elapsed time")
     check((MeetingReminder.progress(in: [next], at: now.addingTimeInterval(299)) ?? 0) > 0.99, "Reminder reaches green just before start")
-    check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(300)) == nil, "Reminder disappears at the meeting start")
+    check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(300)) == 1, "Highlight stays green at the meeting start")
+    check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(599)) == 1, "Highlight stays green until the meeting ends")
+    check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(600)) == nil, "Highlight disappears at the meeting end")
+    check(MeetingReminder.progress(in: [current, next], at: now.addingTimeInterval(300)) == 1, "Back-to-back meetings keep the highlight green")
+    check(MeetingReminder.progress(in: [current, next], at: now.addingTimeInterval(450)) == 1, "An ended meeting does not hide another ongoing meeting")
+    let overlapping = Meeting(id: "overlapping", title: "Overlapping", start: now.addingTimeInterval(-150), end: now.addingTimeInterval(150), calendar: "Test")
+    check(MeetingReminder.progress(in: [current, overlapping], at: now.addingTimeInterval(150)) == 1, "Highlight stays green after one overlapping meeting ends")
+    let following = Meeting(id: "following", title: "Following", start: now.addingTimeInterval(450), end: now.addingTimeInterval(750), calendar: "Test")
+    check(MeetingReminder.progress(in: [current, following], at: now.addingTimeInterval(300)) == 0.5, "Upcoming reminder resumes when the current meeting ends")
     check(MeetingReminder.progress(in: [], at: now) == nil, "No reminder without upcoming meetings")
     check(Meeting.featured(in: [next, current], at: now)?.id == "current", "Current meeting has priority")
     check(Meeting.featured(in: [next, current], at: now.addingTimeInterval(300))?.id == "next", "Exact end boundary advances to next meeting")

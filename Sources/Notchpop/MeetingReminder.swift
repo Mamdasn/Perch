@@ -9,7 +9,7 @@ enum MeetingReminder {
     }
 
     static func progress(in meetings: [Meeting], at now: Date) -> Double? {
-        guard !meetings.contains(where: { $0.isCurrent(at: now) }) else { return nil }
+        if meetings.contains(where: { $0.isCurrent(at: now) }) { return 1 }
         guard let start = meetings.filter({ $0.start > now && $0.end > $0.start })
             .map(\.start).min() else { return nil }
         let remaining = start.timeIntervalSince(now)

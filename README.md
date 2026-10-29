@@ -2,6 +2,10 @@
 
 Your next meeting, tucked behind the notch. Hover inside the notch to reveal your current or upcoming event; move away and the card slides out of view.
 
+<p align="center">
+  <img src="docs/images/perch-meeting.png" alt="Perch showing an upcoming demo meeting with organizer, location, notes, and event navigation." width="560">
+</p>
+
 Works with calendars synced to the macOS Calendar app, including Google and Outlook accounts. Requires **macOS 14 Sonoma or later** on Apple Silicon or Intel. No notch? Use the top center of your display.
 
 ## Install

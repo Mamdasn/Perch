@@ -22,7 +22,7 @@ struct LoginSettings: View {
                 }
             ))
             if status == .requiresApproval {
-                Text("Allow Notchpop in Login Items to finish enabling automatic launch.")
+                Text("Allow Perch in Login Items to finish enabling automatic launch.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             if status == .requiresApproval || error != nil {

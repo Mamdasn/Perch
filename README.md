@@ -1,4 +1,4 @@
-# Notchpop
+# Perch
 
 Your next meeting, tucked behind the notch. Hover inside the notch to reveal your current or upcoming event; move away and the card slides out of view.
 
@@ -6,11 +6,13 @@ Works with calendars synced to the macOS Calendar app, including Google and Outl
 
 ## Install
 
-1. Download the **universal ZIP** from the [latest release](https://github.com/Mamdasn/Notchpop/releases/latest).
-2. Unzip it and move **Notchpop.app** to **Applications**.
-3. Open Notchpop. From its menu-bar icon, choose **Settings → Calendars → Connect Calendar** and allow calendar access.
+1. Download the **universal ZIP** from the [latest release](https://github.com/Mamdasn/Perch/releases/latest).
+2. Unzip it and move **Perch.app** to **Applications**.
+3. Open Perch. From its menu-bar icon, choose **Settings → Calendars → Connect Calendar** and allow calendar access.
 
-No build tools are needed. Enable **Launch at login** in **Settings → General** to start Notchpop automatically after restarting your Mac.
+Releases through v0.1.3 use the previous name, **Notchpop.app**. Use that name for those downloads; builds from source produce **Perch.app**.
+
+No build tools are needed. Enable **Launch at login** in **Settings → General** to start Perch automatically after restarting your Mac.
 
 The release is not notarized by Apple. If macOS blocks it, use **System Settings → Privacy & Security → Open Anyway** only if you trust the download. See [Apple’s guidance](https://support.apple.com/102445).
 
@@ -22,7 +24,7 @@ The release is not notarized by Apple. If macOS blocks it, use **System Settings
 - **Get a quiet reminder:** a blue-to-green highlight appears during the five minutes before a meeting and stays green while a meeting is in progress. Toggle **Meeting highlight** in **Settings → General**.
 - **Try a preview:** click **Load Demo Meeting** in **Settings → Calendars**. Your calendar returns when the preview closes.
 
-Notchpop reads events locally; it never edits or uploads them. All-day and declined events stay hidden. Choose which calendars to show in Settings, or use **Disconnect Calendar** in General to stop loading events.
+Perch reads events locally; it never edits or uploads them. All-day and declined events stay hidden. Choose which calendars to show in Settings, or use **Disconnect Calendar** in General to stop loading events.
 
 ## Build and install from source
 
@@ -35,8 +37,8 @@ xcode-select --install
 Then run:
 
 ```sh
-git clone https://github.com/Mamdasn/Notchpop.git
-cd Notchpop
+git clone https://github.com/Mamdasn/Perch.git
+cd Perch
 bash build-app.sh
 ```
 
@@ -45,12 +47,12 @@ The script builds for your Mac, replaces any existing installation in `/Applicat
 To run the checks after building:
 
 ```sh
-.build/release/Notchpop --self-test
+.build/release/Perch --self-test
 ```
 
 ## Uninstall
 
-Turn off **Launch at login**, quit Notchpop from its menu-bar menu, and move **Notchpop.app** from Applications to Trash.
+Turn off **Launch at login**, quit Perch from its menu-bar menu, and move **Perch.app** from Applications to Trash.
 
 ## License
 

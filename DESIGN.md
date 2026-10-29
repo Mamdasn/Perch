@@ -1,6 +1,6 @@
-# Notchpop design
+# Perch design
 
-Settings uses compact native Calendars and General tabs without external links. The system places the navigation in the title bar where supported. “View Source on GitHub” lives in the menu-bar icon's menu and opens the Notchpop repository.
+Settings uses compact native Calendars and General tabs without external links. The system places the navigation in the title bar where supported. “View Source on GitHub” lives in the menu-bar icon's menu and opens the Perch repository.
 
 On notched displays, only the black notch triggers the 350 ms hover dwell. The visible screen below it and the adjacent menu bar do not trigger the card, leaving other apps' controls accessible. Once open, the card stays available while the pointer interacts with it; notchless displays retain their top-center trigger. Returning during dismissal grace keeps the card open without another dwell. After Settings opens, leaving the trigger clears hover suppression without requiring exit from the hidden card's former area.
 
@@ -36,7 +36,9 @@ The card and blur surface are prepared offscreen during the hover dwell, keeping
 
 The trail uses 9% opacity before fading, the rim 8%, and its soft shadow 2%. These are layer opacities, not final composited pixel measurements. Reduce Motion removes the trail and uses a settled rim and brief fades. Reduce Transparency uses an opaque system background and disables fluid blur and glow. Increased contrast strengthens the base border. Decorative layers ignore pointer input and are hidden from accessibility.
 
-Files under `Sources/Notchpop`: `main.swift` (overlay, focus, and settings), `Meetings.swift` (Calendar data and content), `MeetingPager.swift` (shared scrolling and keyboard navigation), `LiquidHighlight.swift` (bridge and rim), and `BrandIcon.swift` (identity). `scripts/RenderIcon.swift` renders icon assets; `scripts/InspectTrail.swift` previews trail geometry. Build with `bash build-app.sh`; check behavior with `.build/release/Notchpop --self-test`.
+Files under `Sources/Perch`: `main.swift` (overlay, focus, and settings), `Meetings.swift` (Calendar data and content), `MeetingPager.swift` (shared scrolling and keyboard navigation), `LiquidHighlight.swift` (bridge and rim), and `BrandIcon.swift` (identity). `scripts/RenderIcon.swift` renders icon assets; `scripts/InspectTrail.swift` previews trail geometry. Build with `bash build-app.sh`; check behavior with `.build/release/Perch --self-test`.
+
+Perch retains the original `local.notchpop.app` bundle identifier to preserve the app's preferences identity across the rename.
 
 Calendar exclusions persist in UserDefaults. Calendar permission is managed by macOS and read at launch; it is not an app-owned connection flag. The default ad-hoc signature is tied to the executable's hash, so rebuilt installations can require fresh permission. `SIGNING_IDENTITY` allows builds to use a consistent installed signing certificate. See [Apple's signing requirements](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements).
 

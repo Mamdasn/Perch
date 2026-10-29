@@ -17,7 +17,7 @@ struct PreviewReminder {
         ]
         let renderer = ImageRenderer(content:
             VStack(alignment: .leading, spacing: 20) {
-                Text("Notchpop · Meeting reminder").font(.system(size: 24, weight: .semibold))
+                Text("Perch · Meeting reminder").font(.system(size: 24, weight: .semibold))
                 Text("Blue → green, then disappears when the meeting starts.")
                     .foregroundStyle(.secondary)
                 HStack(alignment: .top, spacing: 14) {

@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-<key>CFBundleExecutable</key><string>Notchpop</string>
+<key>CFBundleExecutable</key><string>Perch</string>
+<!-- Keep the existing identifier so the rename preserves the app's preferences identity. -->
 <key>CFBundleIdentifier</key><string>local.notchpop.app</string>
-<key>CFBundleName</key><string>Notchpop</string>
-<key>CFBundleIconFile</key><string>Notchpop</string>
+<key>CFBundleName</key><string>Perch</string>
+<key>CFBundleIconFile</key><string>Perch</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>0.1.3</string>
 <key>CFBundleVersion</key><string>4</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>LSUIElement</key><true/>
 <key>NSHighResolutionCapable</key><true/>
-<key>NSCalendarsFullAccessUsageDescription</key><string>Notchpop reads your calendars to show your current or next meeting at the notch. It never changes your events.</string>
+<key>NSCalendarsFullAccessUsageDescription</key><string>Perch reads your calendars to show your current or next meeting at the notch. It never changes your events.</string>
 </dict></plist>

@@ -55,7 +55,7 @@ enum BrandIcon {
             return true
         }
         image.isTemplate = true
-        image.accessibilityDescription = "Notchpop"
+        image.accessibilityDescription = "Perch"
         return image
     }
 

@@ -115,7 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = BrandIcon.menuImage
         let menu = NSMenu()
-        for (title, action) in [("Settings…", #selector(showSettings)), ("View Source on GitHub", #selector(openSource)), ("Quit Notchpop", #selector(quit))] {
+        for (title, action) in [("Settings…", #selector(showSettings)), ("View Source on GitHub", #selector(openSource)), ("Quit Perch", #selector(quit))] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
             item.target = self
             menu.addItem(item)
@@ -198,7 +198,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     @objc func quit() { NSApp.terminate(nil) }
     @objc func openSource() {
-        guard let url = URL(string: "https://github.com/Mamdasn/Notchpop") else { return }
+        guard let url = URL(string: "https://github.com/Mamdasn/Perch") else { return }
         NSWorkspace.shared.open(url)
     }
     @objc func showSettings() {
@@ -213,7 +213,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if panel.isKeyWindow { panel.resignKey() }
         if settings == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 460), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-            window.title = "Notchpop Settings"
+            window.title = "Perch Settings"
             window.isReleasedWhenClosed = false
             window.hidesOnDeactivate = false
             window.delegate = self
@@ -468,7 +468,7 @@ struct SettingsView: View {
                     } header: {
                         Text("Connect your calendar")
                     } footer: {
-                        Text("macOS requests Full Access. Notchpop only reads events; it never edits or uploads them.")
+                        Text("macOS requests Full Access. Perch only reads events; it never edits or uploads them.")
                     }
                 }
             }
@@ -565,7 +565,7 @@ if CommandLine.arguments.contains("--self-test") {
     check(Meeting.responseLabel(for: nil) == nil && Meeting.responseLabel(for: .unknown) == nil,
           "Missing or unknown responses do not imply acceptance")
     let now = Date()
-    let testDomain = "Notchpop.DisconnectTests.\(UUID().uuidString)"
+    let testDomain = "Perch.DisconnectTests.\(UUID().uuidString)"
     let testDefaults = UserDefaults(suiteName: testDomain)!
     let disconnectedStore = MeetingStore(defaults: testDefaults)
     disconnectedStore.demo(current: true)

@@ -42,7 +42,7 @@ cd Perch
 bash build-app.sh
 ```
 
-The script builds for your Mac, replaces any existing installation in `/Applications`, and opens Notchpop. It requires write access to `/Applications`. Run it again to install source updates.
+The script builds for your Mac, replaces any existing installation in `/Applications`, and opens Perch. It requires write access to `/Applications`. Run it again to install source updates.
 
 To run the checks after building:
 

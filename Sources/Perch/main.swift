@@ -85,7 +85,7 @@ final class OverlayPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     let state = NotchState()
     let meetings = MeetingStore()
     var panel: OverlayPanel!
@@ -113,7 +113,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         panel.orderFrontRegardless()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem.autosaveName = "Perch"
         statusItem.button?.image = BrandIcon.menuImage
+        statusItem.button?.toolTip = "Perch"
+        statusItem.button?.setAccessibilityLabel("Perch")
         let menu = NSMenu()
         for (title, action) in [("Settings…", #selector(showSettings)), ("View Source on GitHub", #selector(openSource)), ("Quit Perch", #selector(quit))] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
@@ -121,6 +124,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             menu.addItem(item)
         }
         statusItem.menu = menu
+        if CommandLine.arguments.contains("--diagnose-status-item") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                guard let self else { return }
+                let button = self.statusItem.button
+                let report: [String: Any] = [
+                    "visible": self.statusItem.isVisible,
+                    "buttonFrame": button.map { NSStringFromRect($0.frame) } ?? "none",
+                    "windowFrame": button?.window.map { NSStringFromRect($0.frame) } ?? "none",
+                    "windowVisible": button?.window?.isVisible ?? false,
+                    "notchFrame": NSStringFromRect(self.notchRect),
+                    "imageSize": button?.image.map { NSStringFromSize($0.size) } ?? "none",
+                    "screenFrame": button?.window?.screen.map { NSStringFromRect($0.frame) } ?? "none",
+                    "safeAreaTop": button?.window?.screen?.safeAreaInsets.top ?? 0
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: report, options: [.sortedKeys]) {
+                    FileHandle.standardOutput.write(data)
+                    FileHandle.standardOutput.write(Data("\n".utf8))
+                }
+                NSApp.terminate(nil)
+            }
+        }
         NotificationCenter.default.addObserver(self, selector: #selector(menuTrackingStarted), name: NSMenu.didBeginTrackingNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(menuTrackingEnded), name: NSMenu.didEndTrackingNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(positionPanel), name: NSApplication.didChangeScreenParametersNotification, object: nil)
@@ -216,20 +240,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.title = "Perch Settings"
             window.isReleasedWhenClosed = false
             window.hidesOnDeactivate = false
-            window.delegate = self
             window.contentView = NSHostingView(rootView: SettingsView(store: meetings, state: state, preview: { [weak self] in self?.previewMeeting() }))
             window.center()
             settings = window
         }
-        // Keep a normal application presence while permission dialogs are open.
-        NSApp.setActivationPolicy(.regular)
+        // Accessory apps can present key windows while staying out of the Dock.
         NSApp.activate(ignoringOtherApps: true)
         settings?.makeKeyAndOrderFront(nil)
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow, window === settings else { return }
-        NSApp.setActivationPolicy(.accessory)
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -246,17 +263,8 @@ struct NotchView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var contrast
     @State private var liquidProgress: CGFloat = 0
-    @State private var milkProgress: CGFloat = 0
+    @State private var rimReveal: CGFloat = 0
     @AppStorage("upcomingMeetingHighlight") private var upcomingMeetingHighlight = true
-    private let edgeColor = Color(red: 0.83, green: 0.94, blue: 0.96)
-
-    private func highlightEdge(radius: CGFloat, intensity: Double) -> some View {
-        RoundedRectangle(cornerRadius: radius, style: .continuous)
-            .strokeBorder(edgeColor.opacity(intensity), lineWidth: 1)
-            .shadow(color: edgeColor.opacity(reduceTransparency ? 0 : intensity * 0.22), radius: 3)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-    }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -276,11 +284,7 @@ struct NotchView: View {
                         NotchMaterial().clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                     }
                 }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .strokeBorder(.white.opacity(contrast == .increased ? 0.18 : 0.035), lineWidth: 1)
-                }
-                .overlay { MilkRim(progress: reduceMotion ? 1 : milkProgress, reveal: reduceMotion ? 1 : liquidProgress, reducedTransparency: reduceTransparency) }
+                .overlay { SilverCardRim(reveal: reduceMotion ? 1 : rimReveal) }
                 .shadow(color: .black.opacity(0.28), radius: 18, y: 10)
                 // Clip at the screen edge, not at the card's resting position.
                 .offset(y: state.topInset + 18 - (reduceMotion ? 0 : (state.topInset + state.cardHeight + 58) * (1 - (state.mood == .peek ? 0 : liquidProgress))))
@@ -294,10 +298,14 @@ struct NotchView: View {
         .clipped()
         .overlay(alignment: .top) {
             TimelineView(.periodic(from: .now, by: state.reminderPreviewStart == nil ? 1 : 1.0 / 30)) { timeline in
-                if let start = state.reminderPreviewStart {
+                if state.mood == .peek && state.reminderPreviewStart == nil {
+                    MeetingReminderEdge(progress: 0, hasNotch: state.hasNotch,
+                                        width: state.notchWidth, height: state.topInset,
+                                        hoverProgress: reduceMotion ? 1 : state.hoverProgress, isHoverPreview: true)
+                } else if state.mood != .open, let start = state.reminderPreviewStart {
                     MeetingReminderEdge(progress: MeetingReminder.previewProgress(elapsed: timeline.date.timeIntervalSince(start)),
                                         hasNotch: state.hasNotch, width: state.notchWidth, height: state.topInset)
-                } else if upcomingMeetingHighlight && !meetings.isDemo,
+                } else if state.mood != .open && upcomingMeetingHighlight && !meetings.isDemo,
                    let progress = MeetingReminder.progress(in: meetings.meetings, at: timeline.date) {
                     MeetingReminderEdge(progress: progress, hasNotch: state.hasNotch,
                                         width: state.notchWidth, height: state.topInset)
@@ -305,18 +313,6 @@ struct NotchView: View {
             }
             .offset(x: state.notchOffsetX)
             .allowsHitTesting(false)
-        }
-        .overlay(alignment: .top) {
-            if state.mood == .peek {
-                highlightEdge(radius: 10, intensity: 0.025 + Double(state.hoverProgress) * 0.055)
-                    .frame(width: state.notchWidth + 4, height: state.topInset + 2)
-            } else if state.mood == .open && !reduceMotion {
-                LiquidBridge(progress: milkProgress, reveal: liquidProgress, inset: state.topInset, cardHeight: state.cardHeight)
-                    .fill(edgeColor.opacity(0.09))
-                    .blur(radius: reduceTransparency ? 0 : 0.7)
-                    .opacity(max(0, 1 - milkProgress * 1.8))
-                    .allowsHitTesting(false).accessibilityHidden(true)
-            }
         }
         .environment(\.colorScheme, .dark)
         .animation(.easeInOut(duration: reduceMotion ? 0.12 : 0.32), value: state.mood)
@@ -326,13 +322,13 @@ struct NotchView: View {
                 withAnimation(reduceMotion ? nil : .timingCurve(0.22, 0.55, 0.25, 1, duration: 0.32)) {
                     liquidProgress = 1
                 }
-                withAnimation(reduceMotion ? nil : .linear(duration: 0.48)) {
-                    milkProgress = 1
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.55)) {
+                    rimReveal = 1
                 }
             } else if state.mood == .peek {
                 var transaction = Transaction()
                 transaction.disablesAnimations = true
-                withTransaction(transaction) { liquidProgress = 0; milkProgress = 0 }
+                withTransaction(transaction) { liquidProgress = 0; rimReveal = 0 }
             }
         }
     }
@@ -399,7 +395,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Meetings")
                 } footer: {
-                    Text("Show a subtle highlight during the five minutes before a meeting, and keep it green while the meeting is in progress.")
+                    Text("A silver edge traces outward during the five minutes before a meeting and stays visible while the meeting is in progress.")
                 }
                 if store.connected {
                     Section("Calendar") {
@@ -582,9 +578,9 @@ if CommandLine.arguments.contains("--self-test") {
           "Ending a demo does not reconnect the calendar")
     testDefaults.removePersistentDomain(forName: testDomain)
     let reminderPreview = NotchState()
-    check(MeetingReminder.previewProgress(elapsed: 5) == 1, "Preview reaches green before loop transition")
-    check(abs(MeetingReminder.previewProgress(elapsed: 5.3) - 0.5) < 0.001, "Preview blends back through teal")
-    check(MeetingReminder.previewProgress(elapsed: 5.6) < 0.001, "Preview returns smoothly to blue")
+    check(MeetingReminder.previewProgress(elapsed: 5) == 1, "Preview reaches bright silver before loop transition")
+    check(abs(MeetingReminder.previewProgress(elapsed: 5.3) - 0.5) < 0.001, "Preview dims through the midpoint")
+    check(MeetingReminder.previewProgress(elapsed: 5.6) < 0.001, "Preview returns smoothly to soft silver")
     reminderPreview.hoverReminder(true, at: now)
     reminderPreview.tickReminderPreview(at: now.addingTimeInterval(0.2))
     check(reminderPreview.reminderPreviewStart == nil, "Reminder preview waits for hover dwell")
@@ -623,18 +619,18 @@ if CommandLine.arguments.contains("--self-test") {
     let current = Meeting(id: "current", title: "Current", start: now.addingTimeInterval(-300), end: now.addingTimeInterval(300), calendar: "Test")
     let next = Meeting(id: "next", title: "Next", start: now.addingTimeInterval(300), end: now.addingTimeInterval(600), calendar: "Test")
     check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(-1)) == nil, "Reminder stays hidden before five minutes")
-    check(MeetingReminder.progress(in: [next], at: now) == 0, "Reminder starts blue at five minutes")
-    check(MeetingReminder.progress(in: [current], at: now) == 1, "Ongoing meetings keep the highlight green")
+    check(MeetingReminder.progress(in: [next], at: now) == 0, "Reminder starts soft silver at five minutes")
+    check(MeetingReminder.progress(in: [current], at: now) == 1, "Ongoing meetings keep the highlight bright silver")
     check(MeetingReminder.progress(in: [next, current], at: now) == 1, "Ongoing meetings take priority over upcoming reminders")
-    check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(150)) == 0.5, "Reminder color follows elapsed time")
-    check((MeetingReminder.progress(in: [next], at: now.addingTimeInterval(299)) ?? 0) > 0.99, "Reminder reaches green just before start")
-    check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(300)) == 1, "Highlight stays green at the meeting start")
-    check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(599)) == 1, "Highlight stays green until the meeting ends")
+    check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(150)) == 0.5, "Reminder brightness follows elapsed time")
+    check((MeetingReminder.progress(in: [next], at: now.addingTimeInterval(299)) ?? 0) > 0.99, "Reminder reaches bright silver just before start")
+    check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(300)) == 1, "Highlight stays silver at the meeting start")
+    check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(599)) == 1, "Highlight stays silver until the meeting ends")
     check(MeetingReminder.progress(in: [next], at: now.addingTimeInterval(600)) == nil, "Highlight disappears at the meeting end")
-    check(MeetingReminder.progress(in: [current, next], at: now.addingTimeInterval(300)) == 1, "Back-to-back meetings keep the highlight green")
+    check(MeetingReminder.progress(in: [current, next], at: now.addingTimeInterval(300)) == 1, "Back-to-back meetings keep the highlight silver")
     check(MeetingReminder.progress(in: [current, next], at: now.addingTimeInterval(450)) == 1, "An ended meeting does not hide another ongoing meeting")
     let overlapping = Meeting(id: "overlapping", title: "Overlapping", start: now.addingTimeInterval(-150), end: now.addingTimeInterval(150), calendar: "Test")
-    check(MeetingReminder.progress(in: [current, overlapping], at: now.addingTimeInterval(150)) == 1, "Highlight stays green after one overlapping meeting ends")
+    check(MeetingReminder.progress(in: [current, overlapping], at: now.addingTimeInterval(150)) == 1, "Highlight stays silver after one overlapping meeting ends")
     let following = Meeting(id: "following", title: "Following", start: now.addingTimeInterval(450), end: now.addingTimeInterval(750), calendar: "Test")
     check(MeetingReminder.progress(in: [current, following], at: now.addingTimeInterval(300)) == 0.5, "Upcoming reminder resumes when the current meeting ends")
     check(MeetingReminder.progress(in: [], at: now) == nil, "No reminder without upcoming meetings")

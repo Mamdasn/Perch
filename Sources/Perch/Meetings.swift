@@ -280,7 +280,7 @@ struct MeetingCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 7) {
-                Circle().fill(meeting?.isCurrent(at: now) == true ? Color.green : Color.secondary).frame(width: 5, height: 5)
+                Circle().fill(meeting?.isCurrent(at: now) == true ? Color(white: 0.9) : Color.secondary).frame(width: 5, height: 5)
                 Text(meeting?.statusLabel(at: now, calendar: calendar) ?? "Up next")
                     .font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
                 if store.isDemo { Text("DEMO").font(.system(size: 8, weight: .semibold)).foregroundStyle(.secondary).padding(4).background(.white.opacity(0.08), in: Capsule()) }
@@ -329,7 +329,7 @@ struct MeetingCard: View {
                 }
                 Spacer(minLength: 8)
                 if current {
-                    ProgressView(value: meeting.progress(at: now)).tint(.green)
+                    ProgressView(value: meeting.progress(at: now)).tint(Color(white: 0.8))
                         .accessibilityLabel("Meeting elapsed").padding(.bottom, 8)
                 } else {
                     Divider().padding(.bottom, 8)

@@ -2,8 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>CFBundleExecutable</key><string>Perch</string>
-<!-- Keep the existing identifier so the rename preserves the app's preferences identity. -->
-<key>CFBundleIdentifier</key><string>local.notchpop.app</string>
+<key>CFBundleIdentifier</key><string>local.perch.app</string>
 <key>CFBundleName</key><string>Perch</string>
 <key>CFBundleIconFile</key><string>Perch</string>
 <key>CFBundlePackageType</key><string>APPL</string>

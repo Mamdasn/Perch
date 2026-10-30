@@ -14,8 +14,6 @@ Works with calendars synced to the macOS Calendar app, including Google and Outl
 2. Unzip it and move **Perch.app** to **Applications**.
 3. Open Perch. From its menu-bar icon, choose **Settings → Calendars → Connect Calendar** and allow calendar access.
 
-Releases through v0.1.3 use the previous name, **Notchpop.app**. Use that name for those downloads; builds from source produce **Perch.app**.
-
 No build tools are needed. Enable **Launch at login** in **Settings → General** to start Perch automatically after restarting your Mac.
 
 The release is not notarized by Apple. If macOS blocks it, use **System Settings → Privacy & Security → Open Anyway** only if you trust the download. See [Apple’s guidance](https://support.apple.com/102445).
@@ -25,10 +23,10 @@ The release is not notarized by Apple. If macOS blocks it, use **System Settings
 - **Browse events:** scroll up or press ↑ for earlier events; scroll down or press ↓ for later events. The arrow keys work while the card is open and notes are collapsed.
 - **Open or join:** click the event title to open it in Calendar, or click **Join** to open its meeting link. If there are multiple meeting links, choose the service from the menu.
 - **See the details:** organizer, location, participant count, and your invitation response appear when available. Click anywhere on the **Notes** row to expand it. While expanded, scrolling over the row or the text scrolls the notes.
-- **Get a quiet reminder:** a blue-to-green highlight appears during the five minutes before a meeting and stays green while a meeting is in progress. Toggle **Meeting highlight** in **Settings → General**.
+- **Get a quiet reminder:** a fine silver edge traces outward during the five minutes before a meeting and stays visible while a meeting is in progress. Toggle **Meeting highlight** in **Settings → General**.
 - **Try a preview:** click **Load Demo Meeting** in **Settings → Calendars**. Your calendar returns when the preview closes.
 
-Perch reads events locally; it never edits or uploads them. All-day and declined events stay hidden. Choose which calendars to show in Settings, or use **Disconnect Calendar** in General to stop loading events.
+Perch stays in the menu bar, including while Settings is open; it does not show a Dock icon. It reads events locally and never edits or uploads them. All-day and declined events stay hidden. Choose which calendars to show in Settings, or use **Disconnect Calendar** in General to stop loading events.
 
 ## Build and install from source
 

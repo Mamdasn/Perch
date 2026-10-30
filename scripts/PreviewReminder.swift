@@ -13,12 +13,12 @@ struct PreviewReminder {
     @MainActor static func main() throws {
         let stages: [(String, Double?)] = [
             ("5 min before", 0), ("3 min before", 0.4),
-            ("1 min before", 0.8), ("Just before", 0.997), ("Meeting starts", nil)
+            ("1 min before", 0.8), ("In progress", 1), ("Meeting ended", nil)
         ]
         let renderer = ImageRenderer(content:
             VStack(alignment: .leading, spacing: 20) {
                 Text("Perch · Meeting reminder").font(.system(size: 24, weight: .semibold))
-                Text("Blue → green, then disappears when the meeting starts.")
+                Text("A fine silver contour traces outward before the meeting and holds until it ends.")
                     .foregroundStyle(.secondary)
                 HStack(alignment: .top, spacing: 14) {
                     ForEach(stages.indices, id: \.self) { index in
